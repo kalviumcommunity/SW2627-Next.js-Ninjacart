@@ -1,0 +1,14 @@
+{
+  "name": "ninjacart",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Ninjacart Produce Catalogue System",
+  "scripts": {
+    "dev": "npm --prefix backend run dev",
+    "start": "npm --prefix backend start",
+    "test": "npm --prefix backend test",
+    "seed": "npm --prefix backend run seed",
+    "prisma:generate": "npm --prefix backend run prisma:generate",
+    "prisma:migrate": "npm --prefix backend run prisma:migrate"
+  }
+}
