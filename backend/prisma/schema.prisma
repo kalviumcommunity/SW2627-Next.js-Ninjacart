@@ -10,6 +10,33 @@ datasource db {
 enum Role {
   FARMER
   RETAILER
+  ADMIN
+}
+
+enum ProduceCategory {
+  VEGETABLES
+  FRUITS
+  GRAINS
+  TUBERS
+  HERBS
+  DAIRY
+  OTHER
+}
+
+enum ProduceStatus {
+  AVAILABLE
+  LOW_STOCK
+  OUT_OF_STOCK
+  ARCHIVED
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
 }
 
 model User {
@@ -27,11 +54,15 @@ model User {
 }
 
 model Farmer {
-  id        String   @id @default(uuid())
-  userId    String   @unique
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id        String    @id @default(uuid())
+  userId    String    @unique
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  phone     String?
+  location  String?
+  bio       String?
+  produces  Produce[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   @@map("farmers")
 }
@@ -40,8 +71,74 @@ model Retailer {
   id        String   @id @default(uuid())
   userId    String   @unique
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  storeName String?
+  phone     String?
+  location  String?
+  orders    Order[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("retailers")
+}
+
+model Produce {
+  id               String          @id @default(uuid())
+  name             String
+  description      String?
+  category         ProduceCategory @default(VEGETABLES)
+  price            Float
+  unit             String          @default("kg")
+  quantity         Float           @default(0)
+  minOrderQuantity Float           @default(1)
+  imageUrl         String?
+  imagePublicId    String?
+  status           ProduceStatus   @default(AVAILABLE)
+  farmerId         String
+  farmer           Farmer          @relation(fields: [farmerId], references: [id], onDelete: Cascade)
+  orderItems       OrderItem[]
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([farmerId])
+  @@index([category])
+  @@index([status, createdAt])
+  @@map("produces")
+}
+
+model Order {
+  id              String      @id @default(uuid())
+  orderNumber     String      @unique @default(uuid())
+  retailerId      String
+  retailer        Retailer    @relation(fields: [retailerId], references: [id], onDelete: Cascade)
+  totalAmount     Float
+  status          OrderStatus @default(PENDING)
+  deliveryAddress String?
+  notes           String?
+  items           OrderItem[]
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([retailerId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("orders")
+}
+
+model OrderItem {
+  id         String   @id @default(uuid())
+  orderId    String
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  produceId  String
+  produce    Produce  @relation(fields: [produceId], references: [id], onDelete: Restrict)
+  quantity   Float
+  unitPrice  Float
+  totalPrice Float
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([orderId])
+  @@index([produceId])
+  @@map("order_items")
 }
