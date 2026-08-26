@@ -1,33 +1,46 @@
 'use client';
 
-import { useState } from 'react';
-import { Product } from '@/lib/api';
+import { useState, useEffect } from 'react';
+import { Product, Produce } from '@/lib/api';
 import { createOrder } from '@/lib/api';
 
 interface OrderModalProps {
-  product: Product;
-  quantity: number;
+  product?: Product;
+  quantity?: number;
   isOpen: boolean;
   onClose: () => void;
   onConfirmSuccess?: (orderData: any) => void;
+  // Alternative interface for catalogue quick order
+  produce?: Produce | null;
 }
 
 export default function OrderModal({
   product,
-  quantity,
+  quantity: initialQuantity = 1,
   isOpen,
   onClose,
   onConfirmSuccess,
+  produce: catalogueProduce,
 }: OrderModalProps) {
+  const [quantity, setQuantity] = useState(initialQuantity);
+
+  // Determine which product object to use
+  const currentProduct = product || catalogueProduce;
+
+  useEffect(() => {
+    if (catalogueProduce) {
+      setQuantity(catalogueProduce.minOrderQuantity || 1);
+    }
+  }, [catalogueProduce]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
 
-  if (!isOpen) {
+  if (!isOpen || !currentProduct) {
     return null;
   }
 
-  const totalPrice = product.price * quantity;
+  const totalPrice = currentProduct.price * quantity;
 
   const handleConfirm = async () => {
     setIsLoading(true);
@@ -37,7 +50,7 @@ export default function OrderModal({
       const orderData = {
         items: [
           {
-            produceId: product.id || '',
+            produceId: currentProduct.id || '',
             quantity: quantity,
           },
         ],
@@ -115,17 +128,35 @@ export default function OrderModal({
         <div className="border rounded-lg p-4 mb-4 bg-gray-50">
           <div className="flex justify-between mb-2">
             <span className="font-medium">Product:</span>
-            <span>{product.name}</span>
+            <span>{currentProduct.name}</span>
           </div>
-          <div className="flex justify-between mb-2">
+          <div className="flex justify-between mb-2 items-center">
             <span className="font-medium">Quantity:</span>
-            <span>
-              {quantity} {product.unit}
-            </span>
+            {catalogueProduce ? (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setQuantity(Math.max(currentProduct.minOrderQuantity || 1, quantity - 1))}
+                  className="px-2 py-1 border border-gray-300 rounded hover:bg-gray-200"
+                >
+                  −
+                </button>
+                <span>{quantity} {currentProduct.unit}</span>
+                <button
+                  onClick={() => setQuantity(Math.min(currentProduct.quantity, quantity + 1))}
+                  className="px-2 py-1 border border-gray-300 rounded hover:bg-gray-200"
+                >
+                  +
+                </button>
+              </div>
+            ) : (
+              <span>
+                {quantity} {currentProduct.unit}
+              </span>
+            )}
           </div>
           <div className="flex justify-between mb-2">
-            <span className="font-medium">Price per {product.unit}:</span>
-            <span>₹{product.price}</span>
+            <span className="font-medium">Price per {currentProduct.unit}:</span>
+            <span>₹{currentProduct.price}</span>
           </div>
           <div className="border-t pt-2 mt-2">
             <div className="flex justify-between font-bold">
