@@ -20,6 +20,7 @@ model User {
   role      Role
   farmer    Farmer?
   retailer  Retailer?
+  produces  Produce[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
@@ -44,4 +45,25 @@ model Retailer {
   updatedAt DateTime @updatedAt
 
   @@map("retailers")
+}
+
+enum ProduceStatus {
+  AVAILABLE
+  SOLD_OUT
+}
+
+model Produce {
+  id          String        @id @default(uuid())
+  name        String
+  price       Float
+  quantity    Int
+  category    String
+  image       String
+  status      ProduceStatus @default(AVAILABLE)
+  farmerId    String
+  farmer      User          @relation(fields: [farmerId], references: [id], onDelete: Cascade)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@map("produce")
 }

@@ -1,0 +1,1 @@
+export default function AddProducePage() { return null; }

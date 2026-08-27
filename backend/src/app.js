@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const authRoutes = require('./routes/auth.routes');
 const testRoutes = require('./routes/test.routes');
+const produceRoutes = require('./routes/produce.routes');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
@@ -28,6 +29,7 @@ app.get('/api/health', (req, res) => {
 // Route mounting
 app.use('/api/auth', authRoutes);
 app.use('/api/test', testRoutes);
+app.use('/api/produce', produceRoutes);
 
 // Catch-all 404 route handler
 app.use('*', (req, res) => {
