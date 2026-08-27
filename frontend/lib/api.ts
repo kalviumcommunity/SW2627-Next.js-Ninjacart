@@ -1,3 +1,4 @@
+// Type definitions - using development's better structured types
 export type ProduceCategory =
   | 'VEGETABLES'
   | 'FRUITS'
@@ -46,17 +47,21 @@ export interface Produce {
   updatedAt?: string;
 }
 
-export interface Product {
+export interface CreateProductData {
   name: string;
-  description?: string;
-  category: ProduceCategory;
+  description?: string | null;
+  category?: ProduceCategory;
   price: number;
   unit?: string;
-  quantity: number;
+  quantity?: number;
   minOrderQuantity?: number;
   imageUrl?: string | null;
   imagePublicId?: string | null;
+  status?: ProduceStatus;
 }
+
+// Type alias for Task #20 compatibility and produce responses
+export type Product = Produce;
 
 export interface PaginationMeta {
   total: number;
@@ -87,6 +92,17 @@ interface RegisterData {
   email: string;
   password: string;
   role: string;
+}
+
+interface OrderItemData {
+  produceId: string;
+  quantity: number;
+}
+
+interface OrderData {
+  items: OrderItemData[];
+  deliveryAddress: string;
+  notes?: string;
 }
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
@@ -396,9 +412,9 @@ export async function getProduces(params: ProduceQueryParams = {}): Promise<Pagi
 }
 
 /**
- * Fetch a single produce item by its ID
+ * Fetch a single produce item by its ID (Task #20)
  */
-export async function getProduceById(id: string): Promise<Produce | null> {
+export async function getProduce(id: string): Promise<Produce> {
   try {
     const res = await fetch(`${BACKEND_URL}/api/produce/${id}`, {
       cache: 'no-store',
@@ -415,13 +431,28 @@ export async function getProduceById(id: string): Promise<Produce | null> {
   }
 
   const found = SAMPLE_PRODUCES.find((p) => p.id === id);
-  return found || null;
+  if (found) {
+    return found;
+  }
+  throw new Error('Failed to fetch product');
+}
+
+/**
+ * Alias for backwards compatibility
+ */
+export async function getProduceById(id: string): Promise<Produce | null> {
+  try {
+    return await getProduce(id);
+  } catch {
+    const found = SAMPLE_PRODUCES.find((p) => p.id === id);
+    return found || null;
+  }
 }
 
 /**
  * Create produce listing (Farmer action)
  */
-export async function createProduct(product: Partial<Produce> | { name: string; price: number; quantity: number; category?: string; [key: string]: any }): Promise<any> {
+export async function createProduct(product: CreateProductData): Promise<any> {
   try {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     const res = await fetch(`${BACKEND_URL}/api/produce`, {
@@ -503,4 +534,28 @@ export async function registerUser(data: RegisterData) {
 
   const result = await response.json();
   return result;
+}
+
+/**
+ * Create a new order (Task #20)
+ */
+export async function createOrder(orderData: OrderData) {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+
+  const response = await fetch(`${BACKEND_URL}/api/orders`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(orderData),
+  });
+
+  if (!response.ok) {
+    const errorResult = await response.json().catch(() => null);
+    throw new Error(errorResult?.error || 'Failed to create order');
+  }
+
+  const result = await response.json();
+  return result.data;
 }
