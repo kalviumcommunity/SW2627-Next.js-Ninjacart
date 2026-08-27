@@ -10,7 +10,8 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
     "seed": "node seed.js",
-    "test": "node test/verify.js && node test/produce_upload.verify.js"
+    "test": "node test/verify.js && node test/produce_upload.verify.js",
+    "test:concurrency": "node tests/inventory.transaction.test.js"
   },
   "prisma": {
     "seed": "node seed.js"
