@@ -6,12 +6,12 @@
   "directories": {
     "lib": "lib"
   },
-"scripts": {
-  "dev": "next dev",
-  "build": "next build",
-  "start": "next start",
-  "lint": "next lint"
-},
+  "scripts": {
+    "dev": "next dev --webpack",
+    "build": "next build --webpack",
+    "start": "next start",
+    "lint": "next lint"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
