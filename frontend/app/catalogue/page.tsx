@@ -458,8 +458,8 @@ export default function RetailerCataloguePage() {
             {produces.map((produce) => (
               <ProductCard
                 key={produce.id}
-                produce={produce}
-                onOrderClick={handleQuickOrder}
+                product={produce}
+                onAddToCart={handleQuickOrder}
               />
             ))}
           </div>
