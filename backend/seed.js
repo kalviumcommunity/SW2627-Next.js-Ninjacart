@@ -252,6 +252,52 @@ async function seed() {
       }
     }
 
+    // ==========================================
+    // 4. Optional: Bulk Seed (100+ listings for load-testing)
+    // ==========================================
+    const isBulk = process.argv.includes('--bulk') || process.env.SEED_BULK === 'true';
+    if (isBulk && createdFarmers.length > 0) {
+      console.log('\n🌾 Generating 100+ bulk produce listings for load testing & pagination benchmark...');
+      const produceTemplates = [
+        { name: 'Organic Red Tomato', cat: 'VEGETABLES', unit: 'kg', basePrice: 30 },
+        { name: 'Shimla Golden Apple', cat: 'FRUITS', unit: 'kg', basePrice: 110 },
+        { name: 'Kolar Yellow Potato', cat: 'TUBERS', unit: 'kg', basePrice: 25 },
+        { name: 'Fresh Mint Leaves', cat: 'HERBS', unit: 'bunch', basePrice: 15 },
+        { name: 'Sona Masoori Rice', cat: 'GRAINS', unit: 'bag', basePrice: 70 },
+        { name: 'Fresh Farm Milk', cat: 'DAIRY', unit: 'L', basePrice: 55 },
+        { name: 'Organic Cauliflower', cat: 'VEGETABLES', unit: 'piece', basePrice: 35 },
+        { name: 'Nashik Pomegranate', cat: 'FRUITS', unit: 'kg', basePrice: 140 },
+        { name: 'Organic Ginger Root', cat: 'TUBERS', unit: 'kg', basePrice: 90 },
+        { name: 'Fresh Coriander Bunch', cat: 'HERBS', unit: 'bunch', basePrice: 12 },
+      ];
+
+      const bulkData = [];
+      for (let i = 1; i <= 100; i++) {
+        const template = produceTemplates[i % produceTemplates.length];
+        const farmer = createdFarmers[i % createdFarmers.length];
+        const qty = i % 12 === 0 ? 0 : 50 + (i * 10);
+
+        bulkData.push({
+          farmerId: farmer.id,
+          name: `${template.name} Lot #${i.toString().padStart(3, '0')}`,
+          description: `Bulk harvest batch #${i} direct from ${farmer.location || 'registered farm'}.`,
+          category: template.cat,
+          price: parseFloat((template.basePrice + (i % 20) * 1.5).toFixed(2)),
+          unit: template.unit,
+          quantity: qty,
+          minOrderQuantity: template.unit === 'bag' ? 2 : 5,
+          status: qty === 0 ? 'OUT_OF_STOCK' : qty < 60 ? 'LOW_STOCK' : 'AVAILABLE',
+          createdAt: new Date(Date.now() - i * 3600000), // Staggered hourly for index queries
+        });
+      }
+
+      await prisma.produce.createMany({
+        data: bulkData,
+        skipDuplicates: true,
+      });
+      console.log(`✅ Successfully bulk seeded ${bulkData.length} produce listings!`);
+    }
+
     console.log('\n=========================================');
     console.log('✅ Seeding completed successfully!');
     console.log('Default credentials for all seed accounts:');
