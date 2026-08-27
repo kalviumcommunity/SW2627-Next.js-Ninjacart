@@ -101,7 +101,7 @@ interface OrderItemData {
 
 interface OrderData {
   items: OrderItemData[];
-  deliveryAddress?: string;
+  deliveryAddress: string;
   notes?: string;
 }
 
