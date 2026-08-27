@@ -3,6 +3,7 @@ const cors = require('cors');
 const authRoutes = require('./routes/auth.routes');
 const produceRoutes = require('./routes/produce.routes');
 const uploadRoutes = require('./routes/upload.routes');
+const orderRoutes = require('./routes/order.routes');
 const testRoutes = require('./routes/test.routes');
 const errorHandler = require('./middleware/errorHandler');
 
@@ -30,6 +31,7 @@ app.get('/api/health', (req, res) => {
 // Route mounting
 app.use('/api/auth', authRoutes);
 app.use('/api/produce', produceRoutes);
+app.use('/api/orders', orderRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/test', testRoutes);
 
