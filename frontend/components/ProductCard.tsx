@@ -1,9 +1,9 @@
 import React from 'react';
-import { Product } from '../lib/mockData';
+import { Produce } from '../lib/api';
 
 interface ProductCardProps {
-  product: Product;
-  onAddToCart?: (product: Product) => void;
+  product: Produce;
+  onAddToCart?: (product: Produce) => void;
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
@@ -19,7 +19,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
       {/* Product Image & Badges */}
       <div className="relative aspect-[4/3] w-full overflow-hidden bg-gray-100">
         <img
-          src={product.image}
+          src={product.imageUrl || 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=800&q=80'}
           alt={product.name}
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           loading="lazy"
@@ -43,9 +43,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
       {/* Card Content */}
       <div className="flex flex-1 flex-col p-5">
         {/* Farmer Attribution */}
-        {product.farmerName && (
+        {product.farmer?.user?.name && (
           <p className="mb-1 text-xs font-medium text-emerald-700">
-            Grown by {product.farmerName}
+            Grown by {product.farmer.user.name}
           </p>
         )}
 
@@ -58,7 +58,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
         <div className="mt-4 flex items-baseline justify-between">
           <div>
             <span className="text-2xl font-black text-gray-900">₹{product.price}</span>
-            <span className="text-xs font-medium text-gray-500"> / kg</span>
+            <span className="text-xs font-medium text-gray-500"> / {product.unit || 'kg'}</span>
           </div>
 
           {/* Stock / Quantity Display */}
@@ -66,7 +66,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
             {isAvailable ? (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 border border-emerald-200/60">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                {product.quantity} kg left
+                {product.quantity} {product.unit || 'kg'} left
               </span>
             ) : (
               <span className="inline-flex items-center rounded-full bg-red-50 px-2.5 py-1 text-xs font-bold text-red-600 border border-red-200">
