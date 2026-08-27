@@ -278,13 +278,37 @@ const updateProduce = async (req, res, next) => {
     if (name !== undefined) updateData.name = name.trim();
     if (description !== undefined) updateData.description = description ? description.trim() : null;
     if (category !== undefined) updateData.category = category.toUpperCase();
-    if (price !== undefined) updateData.price = parseFloat(price);
+    if (price !== undefined) {
+      const parsedPrice = parseFloat(price);
+      if (isNaN(parsedPrice) || parsedPrice < 0) {
+        return res.status(400).json({ success: false, error: 'Price must be a valid non-negative number' });
+      }
+      updateData.price = parsedPrice;
+    }
     if (unit !== undefined) updateData.unit = unit.trim();
-    if (quantity !== undefined) updateData.quantity = parseFloat(quantity);
+    
+    if (quantity !== undefined) {
+      const parsedQuantity = parseFloat(quantity);
+      if (isNaN(parsedQuantity) || parsedQuantity < 0) {
+        return res.status(400).json({ success: false, error: 'Quantity must be a valid non-negative number' });
+      }
+      updateData.quantity = parsedQuantity;
+      if (parsedQuantity === 0) {
+        updateData.status = 'OUT_OF_STOCK';
+      } else if (parsedQuantity > 0 && status === undefined) {
+        updateData.status = 'AVAILABLE';
+      }
+    }
+    
     if (minOrderQuantity !== undefined) updateData.minOrderQuantity = parseFloat(minOrderQuantity);
     if (imageUrl !== undefined) updateData.imageUrl = imageUrl;
     if (imagePublicId !== undefined) updateData.imagePublicId = imagePublicId;
-    if (status !== undefined) updateData.status = status.toUpperCase();
+    if (status !== undefined) {
+      const validStatuses = ['AVAILABLE', 'LOW_STOCK', 'OUT_OF_STOCK', 'ARCHIVED'];
+      if (validStatuses.includes(status.toUpperCase())) {
+        updateData.status = status.toUpperCase();
+      }
+    }
 
     const updatedProduce = await prisma.produce.update({
       where: { id },

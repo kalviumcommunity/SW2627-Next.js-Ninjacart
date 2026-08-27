@@ -1,272 +1,132 @@
-'use client';
-
-import React, { useState } from 'react';
-import Link from 'next/link';
-import { Produce } from '../lib/api';
+import React from 'react';
+import { Product } from '../lib/mockData';
 
 interface ProductCardProps {
-  produce: Produce;
-  onOrderClick?: (produce: Produce) => void;
+  product: Product;
+  onAddToCart?: (product: Product) => void;
 }
 
-export default function ProductCard({ produce, onOrderClick }: ProductCardProps) {
-  const [imgError, setImgError] = useState(false);
-
-  const fallbackImage =
-    'https://images.unsplash.com/photo-1610348725531-843dff563e2c?auto=format&fit=crop&w=600&q=80';
-
-  const isOutOfStock = produce.status === 'OUT_OF_STOCK' || produce.quantity <= 0;
-  const isLowStock = produce.status === 'LOW_STOCK' || (!isOutOfStock && produce.quantity < 50);
-
-  const farmerName = produce.farmer?.user?.name || 'Verified Partner Farm';
-  const farmerLocation = produce.farmer?.location || 'Direct Farm Source';
+export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
+  const isAvailable = product.status === 'AVAILABLE' && product.quantity > 0;
 
   return (
     <div
-      style={{
-        backgroundColor: '#ffffff',
-        borderRadius: '16px',
-        border: '1px solid #e2e8f0',
-        overflow: 'hidden',
-        display: 'flex',
-        flexDirection: 'column',
-        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05)',
-        transition: 'transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease',
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.transform = 'translateY(-4px)';
-        e.currentTarget.style.boxShadow =
-          '0 12px 20px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04)';
-        e.currentTarget.style.borderColor = '#cbd5e1';
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.transform = 'translateY(0)';
-        e.currentTarget.style.boxShadow =
-          '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05)';
-        e.currentTarget.style.borderColor = '#e2e8f0';
-      }}
+      className={`group relative flex flex-col overflow-hidden rounded-2xl border bg-white shadow-sm transition-all duration-300 hover:shadow-md ${isAvailable
+          ? 'border-gray-200 hover:-translate-y-1 hover:border-emerald-300'
+          : 'border-gray-200 bg-gray-50/80 opacity-75 grayscale-[25%]'
+        }`}
     >
-      {/* Image Container with Badges */}
-      <div style={{ position: 'relative', width: '100%', height: '190px', backgroundColor: '#f1f5f9' }}>
+      {/* Product Image & Badges */}
+      <div className="relative aspect-[4/3] w-full overflow-hidden bg-gray-100">
         <img
-          src={!imgError && produce.imageUrl ? produce.imageUrl : fallbackImage}
-          alt={produce.name}
-          onError={() => setImgError(true)}
-          style={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-            display: 'block',
-          }}
+          src={product.image}
+          alt={product.name}
+          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          loading="lazy"
         />
 
-        {/* Category Badge */}
-        <div
-          style={{
-            position: 'absolute',
-            top: '12px',
-            left: '12px',
-            backgroundColor: 'rgba(255, 255, 255, 0.92)',
-            backdropFilter: 'blur(4px)',
-            padding: '4px 10px',
-            borderRadius: '9999px',
-            fontSize: '0.75rem',
-            fontWeight: 700,
-            color: '#334155',
-            letterSpacing: '0.04em',
-            textTransform: 'uppercase',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-          }}
-        >
-          {produce.category}
-        </div>
+        {/* Category Tag */}
+        <span className="absolute top-3 left-3 rounded-full bg-white/90 px-3 py-1 text-xs font-semibold tracking-wide text-gray-700 shadow-sm backdrop-blur-md">
+          {product.category}
+        </span>
 
-        {/* Status Badge */}
-        <div
-          style={{
-            position: 'absolute',
-            top: '12px',
-            right: '12px',
-            padding: '4px 10px',
-            borderRadius: '9999px',
-            fontSize: '0.72rem',
-            fontWeight: 700,
-            letterSpacing: '0.03em',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-            backgroundColor: isOutOfStock
-              ? '#fee2e2'
-              : isLowStock
-              ? '#fef3c7'
-              : '#dcfce7',
-            color: isOutOfStock
-              ? '#b91c1c'
-              : isLowStock
-              ? '#b45309'
-              : '#15803d',
-          }}
-        >
-          {isOutOfStock ? 'OUT OF STOCK' : isLowStock ? 'LOW STOCK' : 'AVAILABLE'}
-        </div>
+        {/* Stock Badge Overlay for Sold Out */}
+        {!isAvailable && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px]">
+            <span className="rounded-full bg-red-600 px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-white shadow-lg">
+              Out of Stock
+            </span>
+          </div>
+        )}
       </div>
 
-      {/* Card Body */}
-      <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', flex: 1, gap: '0.85rem' }}>
-        {/* Title */}
-        <div>
-          <Link
-            href={`/catalogue/${produce.id}`}
-            style={{
-              fontSize: '1.1rem',
-              fontWeight: 700,
-              color: '#0f172a',
-              lineHeight: 1.3,
-              display: '-webkit-box',
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: 'vertical',
-              overflow: 'hidden',
-              textDecoration: 'none',
-            }}
-          >
-            {produce.name}
-          </Link>
-        </div>
+      {/* Card Content */}
+      <div className="flex flex-1 flex-col p-5">
+        {/* Farmer Attribution */}
+        {product.farmerName && (
+          <p className="mb-1 text-xs font-medium text-emerald-700">
+            Grown by {product.farmerName}
+          </p>
+        )}
 
-        {/* Farmer Information */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            backgroundColor: '#f8fafc',
-            padding: '0.5rem 0.75rem',
-            borderRadius: '8px',
-            border: '1px solid #f1f5f9',
-          }}
-        >
-          <div
-            style={{
-              width: '28px',
-              height: '28px',
-              borderRadius: '50%',
-              backgroundColor: '#e2e8f0',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '0.85rem',
-              flexShrink: 0,
-            }}
-          >
-            🚜
-          </div>
-          <div style={{ minWidth: 0, flex: 1 }}>
-            <p
-              style={{
-                fontSize: '0.8rem',
-                fontWeight: 600,
-                color: '#1e293b',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-              }}
-            >
-              {farmerName}
-            </p>
-            <p
-              style={{
-                fontSize: '0.72rem',
-                color: '#64748b',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-              }}
-            >
-              📍 {farmerLocation}
-            </p>
-          </div>
-        </div>
+        {/* Product Title */}
+        <h3 className="line-clamp-1 text-base font-bold text-gray-900 transition-colors group-hover:text-emerald-700">
+          {product.name}
+        </h3>
 
-        {/* Pricing & Stock Details */}
-        <div
-          style={{
-            marginTop: 'auto',
-            paddingTop: '0.5rem',
-            borderTop: '1px solid #f1f5f9',
-            display: 'flex',
-            alignItems: 'baseline',
-            justifyContent: 'space-between',
-          }}
-        >
+        {/* Pricing & Stock Status */}
+        <div className="mt-4 flex items-baseline justify-between">
           <div>
-            <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block' }}>Wholesale Price</span>
-            <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#10b981' }}>
-              ₹{produce.price.toFixed(2)}
-            </span>
-            <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 500 }}>
-              {' '}/ {produce.unit}
-            </span>
+            <span className="text-2xl font-black text-gray-900">₹{product.price}</span>
+            <span className="text-xs font-medium text-gray-500"> / kg</span>
           </div>
 
-          <div style={{ textAlign: 'right' }}>
-            <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block' }}>Stock Available</span>
-            <span
-              style={{
-                fontSize: '0.9rem',
-                fontWeight: 700,
-                color: isOutOfStock ? '#ef4444' : '#334155',
-              }}
-            >
-              {produce.quantity} {produce.unit}
-            </span>
+          {/* Stock / Quantity Display */}
+          <div>
+            {isAvailable ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 border border-emerald-200/60">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                {product.quantity} kg left
+              </span>
+            ) : (
+              <span className="inline-flex items-center rounded-full bg-red-50 px-2.5 py-1 text-xs font-bold text-red-600 border border-red-200">
+                Sold Out
+              </span>
+            )}
           </div>
         </div>
 
-        {/* Min order note */}
-        <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '-0.3rem' }}>
-          Min order: {produce.minOrderQuantity || 1} {produce.unit}
-        </div>
-
-        {/* Card Actions */}
-        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
-          <Link
-            href={`/catalogue/${produce.id}`}
-            style={{
-              flex: 1,
-              textAlign: 'center',
-              padding: '0.6rem 0.8rem',
-              borderRadius: '8px',
-              border: '1px solid #e2e8f0',
-              backgroundColor: '#ffffff',
-              color: '#334155',
-              fontWeight: 600,
-              fontSize: '0.85rem',
-              transition: 'background-color 0.2s',
-            }}
-          >
-            View Details
-          </Link>
-
-          {onOrderClick && !isOutOfStock && (
+        {/* Card Footer / Action Button */}
+        <div className="mt-5 pt-3 border-t border-gray-100">
+          {isAvailable ? (
             <button
               type="button"
-              onClick={() => onOrderClick(produce)}
-              style={{
-                padding: '0.6rem 1rem',
-                borderRadius: '8px',
-                backgroundColor: '#10b981',
-                color: '#ffffff',
-                fontWeight: 600,
-                fontSize: '0.85rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.35rem',
-                transition: 'background-color 0.2s',
-              }}
+              onClick={() => onAddToCart && onAddToCart(product)}
+              className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-emerald-700 hover:shadow active:scale-[0.98] cursor-pointer"
             >
-              <span>🛒</span> Order
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
+                />
+              </svg>
+              Add to Cart
+            </button>
+          ) : (
+            <button
+              type="button"
+              disabled
+              className="w-full flex items-center justify-center gap-2 rounded-xl bg-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-400 cursor-not-allowed shadow-none"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"
+                />
+              </svg>
+              Unavailable
             </button>
           )}
         </div>
       </div>
     </div>
   );
-}
+};
+
+export default ProductCard;
