@@ -47,7 +47,20 @@ export interface Produce {
   updatedAt?: string;
 }
 
-// Type alias for Task #20 compatibility
+export interface CreateProductData {
+  name: string;
+  description?: string | null;
+  category?: ProduceCategory;
+  price: number;
+  unit?: string;
+  quantity?: number;
+  minOrderQuantity?: number;
+  imageUrl?: string | null;
+  imagePublicId?: string | null;
+  status?: ProduceStatus;
+}
+
+// Type alias for Task #20 compatibility and produce responses
 export type Product = Produce;
 
 export interface PaginationMeta {
@@ -439,7 +452,7 @@ export async function getProduceById(id: string): Promise<Produce | null> {
 /**
  * Create produce listing (Farmer action)
  */
-export async function createProduct(product: Partial<Produce> | { name: string; price: number; quantity: number; category?: string; [key: string]: any }): Promise<any> {
+export async function createProduct(product: CreateProductData): Promise<any> {
   try {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     const res = await fetch(`${BACKEND_URL}/api/produce`, {

@@ -28,10 +28,13 @@ export default function OrderModal({
   const currentProduct = product || catalogueProduce;
 
   useEffect(() => {
-    if (catalogueProduce) {
-      setQuantity(catalogueProduce.minOrderQuantity || 1);
+    if (currentProduct) {
+      const startingQuantity = catalogueProduce
+        ? catalogueProduce.minOrderQuantity || 1
+        : initialQuantity;
+      setQuantity(Math.min(currentProduct.quantity, Math.max(0, startingQuantity)));
     }
-  }, [catalogueProduce]);
+  }, [catalogueProduce, currentProduct, initialQuantity]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -42,7 +45,28 @@ export default function OrderModal({
 
   const totalPrice = currentProduct.price * quantity;
 
+  const updateQuantity = (value: number) => {
+    setQuantity(Math.min(currentProduct.quantity, Math.max(0, value)));
+  };
+
+  const handleQuantityChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.value === '') {
+      setQuantity(0);
+      return;
+    }
+
+    const value = parseInt(event.target.value, 10);
+    if (!isNaN(value)) {
+      updateQuantity(value);
+    }
+  };
+
   const handleConfirm = async () => {
+    if (quantity <= 0 || quantity > currentProduct.quantity) {
+      setError('Select a quantity that is available in stock.');
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
 
@@ -65,10 +89,6 @@ export default function OrderModal({
         onConfirmSuccess(result);
       }
 
-      // Auto-close success screen after 2 seconds
-      setTimeout(() => {
-        handleClose();
-      }, 2000);
     } catch (err: any) {
       setError(err.message || 'Failed to place order. Please try again.');
     } finally {
@@ -132,27 +152,36 @@ export default function OrderModal({
           </div>
           <div className="flex justify-between mb-2 items-center">
             <span className="font-medium">Quantity:</span>
-            {catalogueProduce ? (
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setQuantity(Math.max(currentProduct.minOrderQuantity || 1, quantity - 1))}
-                  className="px-2 py-1 border border-gray-300 rounded hover:bg-gray-200"
-                >
-                  −
-                </button>
-                <span>{quantity} {currentProduct.unit}</span>
-                <button
-                  onClick={() => setQuantity(Math.min(currentProduct.quantity, quantity + 1))}
-                  className="px-2 py-1 border border-gray-300 rounded hover:bg-gray-200"
-                >
-                  +
-                </button>
-              </div>
-            ) : (
-              <span>
-                {quantity} {currentProduct.unit}
-              </span>
-            )}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => updateQuantity(quantity - 1)}
+                disabled={quantity <= 0}
+                aria-label="Decrease quantity"
+                className="px-2 py-1 border border-gray-300 rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                −
+              </button>
+              <input
+                type="number"
+                value={quantity}
+                onChange={handleQuantityChange}
+                min="0"
+                max={currentProduct.quantity}
+                aria-label="Quantity to order"
+                className="w-16 py-1 text-center border border-gray-300 rounded font-semibold"
+              />
+              <button
+                type="button"
+                onClick={() => updateQuantity(quantity + 1)}
+                disabled={quantity >= currentProduct.quantity}
+                aria-label="Increase quantity"
+                className="px-2 py-1 border border-gray-300 rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                +
+              </button>
+              <span>{currentProduct.unit}</span>
+            </div>
           </div>
           <div className="flex justify-between mb-2">
             <span className="font-medium">Price per {currentProduct.unit}:</span>
@@ -182,7 +211,7 @@ export default function OrderModal({
           </button>
           <button
             onClick={handleConfirm}
-            disabled={isLoading}
+            disabled={isLoading || quantity <= 0 || quantity > currentProduct.quantity}
             className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 flex items-center justify-center"
           >
             {isLoading ? (

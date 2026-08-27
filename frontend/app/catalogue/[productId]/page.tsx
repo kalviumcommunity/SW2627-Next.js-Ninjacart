@@ -21,6 +21,7 @@ export default function ProductDetailPage() {
         setLoading(true);
         const data = await getProduce(productId);
         setProduct(data);
+        setQuantity(data.quantity > 0 ? 1 : 0);
         setError(null);
       } catch (err: any) {
         setError(err.message || 'Failed to load product');
@@ -36,17 +37,21 @@ export default function ProductDetailPage() {
   }, [productId]);
 
   const handleDecreaseQuantity = () => {
-    setQuantity((prev) => Math.max(1, prev - 1));
+    setQuantity((prev) => Math.max(0, prev - 1));
   };
 
   const handleIncreaseQuantity = () => {
-    setQuantity((prev) => prev + 1);
+    setQuantity((prev) => Math.min(product?.quantity ?? prev, prev + 1));
   };
 
   const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value, 10);
-    if (!isNaN(value) && value > 0) {
-      setQuantity(value);
+    const maximum = product?.quantity ?? 0;
+
+    if (e.target.value === '') {
+      setQuantity(0);
+    } else if (!isNaN(value)) {
+      setQuantity(Math.min(maximum, Math.max(0, value)));
     }
   };
 
@@ -226,7 +231,8 @@ export default function ProductDetailPage() {
               <div className="flex items-center gap-4">
                 <button
                   onClick={handleDecreaseQuantity}
-                  disabled={quantity <= 1}
+                  disabled={quantity <= 0}
+                  aria-label="Decrease quantity"
                   className="w-10 h-10 rounded-lg border border-gray-300 flex items-center justify-center text-xl font-bold text-gray-700 hover:bg-gray-100 transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   −
@@ -236,12 +242,16 @@ export default function ProductDetailPage() {
                   type="number"
                   value={quantity}
                   onChange={handleQuantityChange}
-                  min="1"
+                  min="0"
+                  max={product.quantity}
+                  aria-label="Quantity to order"
                   className="w-20 h-10 text-center border border-gray-300 rounded-lg font-semibold text-gray-900"
                 />
 
                 <button
                   onClick={handleIncreaseQuantity}
+                  disabled={quantity >= product.quantity}
+                  aria-label="Increase quantity"
                   className="w-10 h-10 rounded-lg border border-gray-300 flex items-center justify-center text-xl font-bold text-gray-700 hover:bg-gray-100 transition"
                 >
                   +
@@ -264,7 +274,7 @@ export default function ProductDetailPage() {
             {/* Order Button */}
             <button
               onClick={handleOrderClick}
-              disabled={quantity === 0}
+              disabled={quantity <= 0 || quantity > product.quantity}
               className="w-full py-3 px-6 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Place Order

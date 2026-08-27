@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { createProduct, uploadImage, type Product } from "@/lib/api";
+import { createProduct, uploadImage, type CreateProductData, type ProduceCategory } from "@/lib/api";
 import ImageUpload from "@/components/ImageUpload";
 
 
@@ -10,7 +10,7 @@ import ImageUpload from "@/components/ImageUpload";
 export default function AddProducePage() {
     const [name, setName] = useState("")
     const [description, setDescription] = useState("")
-    const [category, setCategory] = useState<Product["category"]>("VEGETABLES")
+    const [category, setCategory] = useState<ProduceCategory>("VEGETABLES")
     const [price, setPrice] = useState("")
     const [unit, setUnit] = useState("")
     const [quantity, setQuantity] = useState("")
@@ -62,7 +62,7 @@ export default function AddProducePage() {
           }
         }
 
-        const product: Product = {
+        const product: CreateProductData = {
           name: name.trim(),
           description: description.trim(),
           category,
@@ -96,7 +96,7 @@ export default function AddProducePage() {
             value={description}
             onChange={(e) => setDescription(e.target.value)} />
 
-            <select value={category} onChange={(e) => setCategory(e.target.value as Product["category"])}>
+            <select value={category} onChange={(e) => setCategory(e.target.value as ProduceCategory)}>
               <option value="VEGETABLES">Vegetables</option>
               <option value="FRUITS">Fruits</option>
               <option value="GRAINS">Grains</option>
