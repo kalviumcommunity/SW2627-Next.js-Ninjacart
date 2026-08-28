@@ -454,12 +454,15 @@ export default function RetailerCataloguePage() {
           </div>
         ) : (
           /* Product Grid */
-      <div className="catalogue-grid"> 
-     {produces.map((produce) => ( 
-      <ProductCard key={produce.id} produce={produce} onOrderClick={handleQuickOrder} /> 
-       ))} 
-      </div>
-
+          <div className="catalogue-grid">
+            {produces.map((produce) => (
+              <ProductCard
+                key={produce.id}
+                produce={produce}
+                onOrderClick={handleQuickOrder}
+              />
+            ))}
+          </div>
         )}
 
         {/* Pagination Bar */}

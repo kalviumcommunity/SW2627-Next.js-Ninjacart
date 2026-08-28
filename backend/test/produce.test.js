@@ -163,37 +163,37 @@ async function runProduceTests() {
       price: 50.0,
       quantity: 50
     };
-    const updateRes = await request('PATCH', `/api/produce/${produceId}`, updatePayload, {
+    const updateRes = await request('PUT', `/api/produce/${produceId}`, updatePayload, {
       Authorization: `Bearer ${farmerToken}`
     });
     const updateValid = updateRes.status === 200 &&
       updateRes.body.data.price === 50 &&
       updateRes.body.data.quantity === 50;
-    recordTest('7. Update Produce (PATCH /produce/:id) succeeds', updateValid, JSON.stringify(updateRes.body));
+    recordTest('7. Update Produce (PUT /produce/:id) succeeds', updateValid, JSON.stringify(updateRes.body));
 
     // 6. Update produce to 0 quantity changes status to OUT_OF_STOCK
-    const updateToZeroRes = await request('PATCH', `/api/produce/${produceId}`, { quantity: 0 }, {
+    const updateToZeroRes = await request('PUT', `/api/produce/${produceId}`, { quantity: 0 }, {
       Authorization: `Bearer ${farmerToken}`
     });
     const updateToZeroValid = updateToZeroRes.status === 200 && updateToZeroRes.body.data.status === 'OUT_OF_STOCK';
     recordTest('8. Update Produce to 0 quantity changes status to OUT_OF_STOCK', updateToZeroValid, JSON.stringify(updateToZeroRes.body));
 
     // 7. Update produce back to positive quantity changes status to AVAILABLE
-    const updateToPositiveRes = await request('PATCH', `/api/produce/${produceId}`, { quantity: 10 }, {
+    const updateToPositiveRes = await request('PUT', `/api/produce/${produceId}`, { quantity: 10 }, {
       Authorization: `Bearer ${farmerToken}`
     });
     const updateToPositiveValid = updateToPositiveRes.status === 200 && updateToPositiveRes.body.data.status === 'AVAILABLE';
     recordTest('9. Update Produce to positive quantity changes status to AVAILABLE', updateToPositiveValid, JSON.stringify(updateToPositiveRes.body));
 
     // 8. Update produce validation error
-    const updateInvalidRes = await request('PATCH', `/api/produce/${produceId}`, { price: -5 }, {
+    const updateInvalidRes = await request('PUT', `/api/produce/${produceId}`, { price: -5 }, {
       Authorization: `Bearer ${farmerToken}`
     });
     const updateInvalidValid = updateInvalidRes.status === 400;
     recordTest('10. Update Produce validation fails for negative price (400 Bad Request)', updateInvalidValid, JSON.stringify(updateInvalidRes.body));
 
     // 9. Retailer tries to update produce (Forbidden)
-    const updateRetailerRes = await request('PATCH', `/api/produce/${produceId}`, { price: 60 }, {
+    const updateRetailerRes = await request('PUT', `/api/produce/${produceId}`, { price: 60 }, {
       Authorization: `Bearer ${retailerToken}`
     });
     // the route has authorizeRole('FARMER') so it will return 403

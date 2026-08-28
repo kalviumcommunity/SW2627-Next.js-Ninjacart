@@ -10,7 +10,7 @@ router.get('/:id', produceController.getProduceById);
 
 // Farmer only actions
 router.post('/', authenticate, authorizeRole(['FARMER', 'ADMIN']), produceController.createProduce);
-router.patch('/:id', authenticate, authorizeRole(['FARMER', 'ADMIN']), produceController.updateProduce);
+router.put('/:id', authenticate, authorizeRole(['FARMER', 'ADMIN']), produceController.updateProduce);
 router.delete('/:id', authenticate, authorizeRole(['FARMER', 'ADMIN']), produceController.deleteProduce);
 
 module.exports = router;

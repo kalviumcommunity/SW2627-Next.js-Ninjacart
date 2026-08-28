@@ -82,9 +82,6 @@ async function runVerification() {
     }
 
     // Clean test database records for isolated testing
-    await prisma.orderItem.deleteMany({});
-    await prisma.order.deleteMany({});
-    await prisma.produce.deleteMany({});
     await prisma.farmer.deleteMany({});
     await prisma.retailer.deleteMany({});
     await prisma.user.deleteMany({});
