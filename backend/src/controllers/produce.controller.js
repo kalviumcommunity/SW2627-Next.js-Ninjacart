@@ -544,7 +544,7 @@ const updateProduce = async (req, res, next) => {
     // Price
     // -------------------------
     if (price !== undefined) {
-      const parsedPrice = Number(price);
+      const parsedPrice = parseFloat(price);
 
       if (
         !Number.isFinite(parsedPrice) ||
@@ -583,7 +583,7 @@ const updateProduce = async (req, res, next) => {
     let quantityWasUpdated = false;
 
     if (quantity !== undefined) {
-      const parsedQuantity = Number(quantity);
+      const parsedQuantity = parseFloat(quantity);
 
       if (
         !Number.isFinite(parsedQuantity) ||
@@ -604,8 +604,7 @@ const updateProduce = async (req, res, next) => {
     // Minimum order quantity
     // -------------------------
     if (minOrderQuantity !== undefined) {
-      const parsedMinOrderQuantity =
-        Number(minOrderQuantity);
+      const parsedMinOrderQuantity = parseFloat(minOrderQuantity);
 
       if (
         !Number.isFinite(parsedMinOrderQuantity) ||
@@ -653,12 +652,18 @@ const updateProduce = async (req, res, next) => {
     }
 
     // -------------------------
-    // Automatically update status
+    // Status Logic
     // -------------------------
-    if (quantityWasUpdated && status === undefined) {
+    if (quantityWasUpdated) {
       if (updateData.quantity === 0) {
+        if (status !== undefined && String(status).trim().toUpperCase() === 'AVAILABLE') {
+          return res.status(400).json({
+            success: false,
+            error: 'Cannot set status to AVAILABLE when quantity is 0',
+          });
+        }
         updateData.status = 'OUT_OF_STOCK';
-      } else {
+      } else if (status === undefined) {
         updateData.status = 'AVAILABLE';
       }
     }
