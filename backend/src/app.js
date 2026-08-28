@@ -33,7 +33,6 @@ app.use('/api/auth', authRoutes);
 app.use('/api/produce', produceRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/upload', uploadRoutes);
-app.use('/api/orders', orderRoutes);
 app.use('/api/test', testRoutes);
 
 // Catch-all 404 route handler
