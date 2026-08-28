@@ -7,8 +7,8 @@ const { authorizeRole } = require('../middleware/roleGuard');
 // All order routes require authentication
 router.use(authenticate);
 
-// Place a new order (Retailer only)
-router.post('/', authorizeRole('RETAILER'), (req, res, next) => orderController.createOrder(req, res, next));
+// Place a new order (Retailers only)
+router.post('/', authorizeRole(['RETAILER']), orderController.createOrder);
 
 // Get all orders (Retailer gets their own orders, Admin gets all)
 router.get('/', (req, res, next) => orderController.getOrders(req, res, next));

@@ -1,6 +1,26 @@
 const prisma = require('../config/db');
 
 /**
+ * Valid values
+ */
+const VALID_CATEGORIES = [
+  'VEGETABLES',
+  'FRUITS',
+  'GRAINS',
+  'TUBERS',
+  'HERBS',
+  'DAIRY',
+  'OTHER',
+];
+
+const VALID_STATUSES = [
+  'AVAILABLE',
+  'LOW_STOCK',
+  'OUT_OF_STOCK',
+  'ARCHIVED',
+];
+
+/**
  * Create a new produce listing
  * POST /api/produce
  */
@@ -19,33 +39,118 @@ const createProduce = async (req, res, next) => {
       status,
     } = req.body;
 
-    // Validation
-    if (!name || typeof name !== 'string' || !name.trim()) {
+    // -------------------------
+    // Validate name
+    // -------------------------
+    if (
+      !name ||
+      typeof name !== 'string' ||
+      name.trim().length === 0
+    ) {
       return res.status(400).json({
         success: false,
         error: 'Produce name is required',
       });
     }
 
-    const parsedPrice = parseFloat(price);
-    if (isNaN(parsedPrice) || parsedPrice < 0) {
+    // -------------------------
+    // Validate price
+    // -------------------------
+    const parsedPrice = Number(price);
+
+    if (!Number.isFinite(parsedPrice) || parsedPrice < 0) {
       return res.status(400).json({
         success: false,
         error: 'Valid non-negative price is required',
       });
     }
 
-    const parsedQuantity = quantity !== undefined ? parseFloat(quantity) : 0;
-    if (isNaN(parsedQuantity) || parsedQuantity < 0) {
+    // -------------------------
+    // Validate quantity
+    // -------------------------
+    const parsedQuantity =
+      quantity === undefined || quantity === null || quantity === ''
+        ? 0
+        : Number(quantity);
+
+    if (!Number.isFinite(parsedQuantity) || parsedQuantity < 0) {
       return res.status(400).json({
         success: false,
         error: 'Quantity must be a non-negative number',
       });
     }
 
-    // Find farmer profile associated with authenticated user
+    // -------------------------
+    // Validate minimum order quantity
+    // -------------------------
+    const parsedMinOrderQuantity =
+      minOrderQuantity === undefined ||
+      minOrderQuantity === null ||
+      minOrderQuantity === ''
+        ? 1
+        : Number(minOrderQuantity);
+
+    if (
+      !Number.isFinite(parsedMinOrderQuantity) ||
+      parsedMinOrderQuantity <= 0
+    ) {
+      return res.status(400).json({
+        success: false,
+        error: 'Minimum order quantity must be greater than 0',
+      });
+    }
+
+    // -------------------------
+    // Validate category
+    // -------------------------
+    let normalizedCategory = 'VEGETABLES';
+
+    if (category !== undefined && category !== null && category !== '') {
+      normalizedCategory = String(category).trim().toUpperCase();
+
+      if (!VALID_CATEGORIES.includes(normalizedCategory)) {
+        return res.status(400).json({
+          success: false,
+          error: `Invalid category. Allowed values: ${VALID_CATEGORIES.join(', ')}`,
+        });
+      }
+    }
+
+    // -------------------------
+    // Validate status
+    // -------------------------
+    let normalizedStatus = 'AVAILABLE';
+
+    if (status !== undefined && status !== null && status !== '') {
+      normalizedStatus = String(status).trim().toUpperCase();
+
+      if (!VALID_STATUSES.includes(normalizedStatus)) {
+        return res.status(400).json({
+          success: false,
+          error: `Invalid status. Allowed values: ${VALID_STATUSES.join(', ')}`,
+        });
+      }
+    }
+
+    // If quantity is 0, listing cannot be AVAILABLE
+    if (parsedQuantity === 0) {
+      normalizedStatus = 'OUT_OF_STOCK';
+    }
+
+    // -------------------------
+    // Find authenticated farmer
+    // -------------------------
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required',
+      });
+    }
+
     const farmer = await prisma.farmer.findUnique({
-      where: { userId: req.user.id },
+      where: {
+        userId: req.user.id,
+      },
     });
 
     if (!farmer) {
@@ -55,35 +160,39 @@ const createProduce = async (req, res, next) => {
       });
     }
 
-    // Normalize category and status
-    const validCategories = ['VEGETABLES', 'FRUITS', 'GRAINS', 'TUBERS', 'HERBS', 'DAIRY', 'OTHER'];
-    const normalizedCategory = category && validCategories.includes(category.toUpperCase())
-      ? category.toUpperCase()
-      : 'VEGETABLES';
-
-    const validStatuses = ['AVAILABLE', 'LOW_STOCK', 'OUT_OF_STOCK', 'ARCHIVED'];
-    let normalizedStatus = status && validStatuses.includes(status.toUpperCase())
-      ? status.toUpperCase()
-      : 'AVAILABLE';
-
-    if (parsedQuantity === 0 && normalizedStatus === 'AVAILABLE') {
-      normalizedStatus = 'OUT_OF_STOCK';
-    }
-
+    // -------------------------
+    // Create produce
+    // -------------------------
     const produce = await prisma.produce.create({
       data: {
         name: name.trim(),
-        description: description ? description.trim() : null,
+        description:
+          description && typeof description === 'string'
+            ? description.trim()
+            : null,
+
         category: normalizedCategory,
+
         price: parsedPrice,
-        unit: unit ? unit.trim() : 'kg',
+
+        unit:
+          unit && typeof unit === 'string'
+            ? unit.trim()
+            : 'kg',
+
         quantity: parsedQuantity,
-        minOrderQuantity: minOrderQuantity ? parseFloat(minOrderQuantity) : 1,
+
+        minOrderQuantity: parsedMinOrderQuantity,
+
         imageUrl: imageUrl || null,
+
         imagePublicId: imagePublicId || null,
+
         status: normalizedStatus,
+
         farmerId: farmer.id,
       },
+
       include: {
         farmer: {
           include: {
@@ -109,49 +218,132 @@ const createProduce = async (req, res, next) => {
 };
 
 /**
- * Get paginated produce catalogue with filtering (utilizes status & createdAt indexes)
+ * Get paginated produce catalogue
  * GET /api/produce
  */
 const getProduces = async (req, res, next) => {
   try {
-    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 10));
+    const page = Math.max(
+      1,
+      parseInt(req.query.page, 10) || 1
+    );
+
+    const limit = Math.min(
+      100,
+      Math.max(
+        1,
+        parseInt(req.query.limit, 10) || 10
+      )
+    );
+
     const skip = (page - 1) * limit;
 
-    const { status, category, farmerId, search, sortBy, order } = req.query;
+    const {
+      status,
+      category,
+      farmerId,
+      search,
+      sortBy,
+      order,
+    } = req.query;
 
     const where = {};
 
+    // -------------------------
+    // Status filter
+    // -------------------------
     if (status) {
-      where.status = status.toUpperCase();
+      const normalizedStatus = status.trim().toUpperCase();
+
+      if (!VALID_STATUSES.includes(normalizedStatus)) {
+        return res.status(400).json({
+          success: false,
+          error: `Invalid status. Allowed values: ${VALID_STATUSES.join(', ')}`,
+        });
+      }
+
+      where.status = normalizedStatus;
     }
 
+    // -------------------------
+    // Category filter
+    // -------------------------
     if (category) {
-      where.category = category.toUpperCase();
+      const normalizedCategory = category.trim().toUpperCase();
+
+      if (!VALID_CATEGORIES.includes(normalizedCategory)) {
+        return res.status(400).json({
+          success: false,
+          error: `Invalid category. Allowed values: ${VALID_CATEGORIES.join(', ')}`,
+        });
+      }
+
+      where.category = normalizedCategory;
     }
 
+    // -------------------------
+    // Farmer filter
+    // -------------------------
     if (farmerId) {
       where.farmerId = farmerId;
     }
 
+    // -------------------------
+    // Search
+    // -------------------------
     if (search && typeof search === 'string') {
-      where.OR = [
-        { name: { contains: search.trim(), mode: 'insensitive' } },
-        { description: { contains: search.trim(), mode: 'insensitive' } },
-      ];
+      const searchTerm = search.trim();
+
+      if (searchTerm) {
+        where.OR = [
+          {
+            name: {
+              contains: searchTerm,
+              mode: 'insensitive',
+            },
+          },
+          {
+            description: {
+              contains: searchTerm,
+              mode: 'insensitive',
+            },
+          },
+        ];
+      }
     }
 
-    const sortField = ['createdAt', 'price', 'quantity', 'name'].includes(sortBy) ? sortBy : 'createdAt';
-    const sortOrder = order && order.toLowerCase() === 'asc' ? 'asc' : 'desc';
+    // -------------------------
+    // Sorting
+    // -------------------------
+    const allowedSortFields = [
+      'createdAt',
+      'price',
+      'quantity',
+      'name',
+    ];
 
+    const sortField = allowedSortFields.includes(sortBy)
+      ? sortBy
+      : 'createdAt';
+
+    const sortOrder =
+      order && order.toLowerCase() === 'asc'
+        ? 'asc'
+        : 'desc';
+
+    // -------------------------
+    // Fetch data
+    // -------------------------
     const [produces, total] = await Promise.all([
       prisma.produce.findMany({
         where,
         skip,
         take: limit,
+
         orderBy: {
           [sortField]: sortOrder,
         },
+
         include: {
           farmer: {
             include: {
@@ -166,13 +358,17 @@ const getProduces = async (req, res, next) => {
           },
         },
       }),
-      prisma.produce.count({ where }),
+
+      prisma.produce.count({
+        where,
+      }),
     ]);
 
     return res.status(200).json({
       success: true,
       data: {
         produces,
+
         pagination: {
           total,
           page,
@@ -196,7 +392,10 @@ const getProduceById = async (req, res, next) => {
     const { id } = req.params;
 
     const produce = await prisma.produce.findUnique({
-      where: { id },
+      where: {
+        id,
+      },
+
       include: {
         farmer: {
           include: {
@@ -230,11 +429,12 @@ const getProduceById = async (req, res, next) => {
 
 /**
  * Update produce listing
- * PUT /api/produce/:id
+ * PATCH /api/produce/:id
  */
 const updateProduce = async (req, res, next) => {
   try {
     const { id } = req.params;
+
     const {
       name,
       description,
@@ -248,9 +448,13 @@ const updateProduce = async (req, res, next) => {
       status,
     } = req.body;
 
+    // -------------------------
+    // Find existing produce
+    // -------------------------
     const existing = await prisma.produce.findUnique({
-      where: { id },
-      include: { farmer: true },
+      where: {
+        id,
+      },
     });
 
     if (!existing) {
@@ -260,35 +464,215 @@ const updateProduce = async (req, res, next) => {
       });
     }
 
-    // Ensure farmer owns this produce item (or user is admin)
+    // -------------------------
+    // Check authentication
+    // -------------------------
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required',
+      });
+    }
+
+    // -------------------------
+    // Check ownership
+    // -------------------------
     if (req.user.role !== 'ADMIN') {
       const farmer = await prisma.farmer.findUnique({
-        where: { userId: req.user.id },
+        where: {
+          userId: req.user.id,
+        },
       });
 
       if (!farmer || farmer.id !== existing.farmerId) {
         return res.status(403).json({
           success: false,
-          error: 'Forbidden: You can only modify your own produce listings',
+          error:
+            'Forbidden: You can only modify your own produce listings',
         });
       }
     }
 
     const updateData = {};
-    if (name !== undefined) updateData.name = name.trim();
-    if (description !== undefined) updateData.description = description ? description.trim() : null;
-    if (category !== undefined) updateData.category = category.toUpperCase();
-    if (price !== undefined) updateData.price = parseFloat(price);
-    if (unit !== undefined) updateData.unit = unit.trim();
-    if (quantity !== undefined) updateData.quantity = parseFloat(quantity);
-    if (minOrderQuantity !== undefined) updateData.minOrderQuantity = parseFloat(minOrderQuantity);
-    if (imageUrl !== undefined) updateData.imageUrl = imageUrl;
-    if (imagePublicId !== undefined) updateData.imagePublicId = imagePublicId;
-    if (status !== undefined) updateData.status = status.toUpperCase();
 
+    // -------------------------
+    // Name
+    // -------------------------
+    if (name !== undefined) {
+      if (
+        typeof name !== 'string' ||
+        name.trim().length === 0
+      ) {
+        return res.status(400).json({
+          success: false,
+          error: 'Produce name cannot be empty',
+        });
+      }
+
+      updateData.name = name.trim();
+    }
+
+    // -------------------------
+    // Description
+    // -------------------------
+    if (description !== undefined) {
+      updateData.description =
+        description && typeof description === 'string'
+          ? description.trim()
+          : null;
+    }
+
+    // -------------------------
+    // Category
+    // -------------------------
+    if (category !== undefined) {
+      const normalizedCategory = String(category)
+        .trim()
+        .toUpperCase();
+
+      if (!VALID_CATEGORIES.includes(normalizedCategory)) {
+        return res.status(400).json({
+          success: false,
+          error: `Invalid category. Allowed values: ${VALID_CATEGORIES.join(', ')}`,
+        });
+      }
+
+      updateData.category = normalizedCategory;
+    }
+
+    // -------------------------
+    // Price
+    // -------------------------
+    if (price !== undefined) {
+      const parsedPrice = Number(price);
+
+      if (
+        !Number.isFinite(parsedPrice) ||
+        parsedPrice < 0
+      ) {
+        return res.status(400).json({
+          success: false,
+          error:
+            'Price must be a valid non-negative number',
+        });
+      }
+
+      updateData.price = parsedPrice;
+    }
+
+    // -------------------------
+    // Unit
+    // -------------------------
+    if (unit !== undefined) {
+      if (
+        typeof unit !== 'string' ||
+        unit.trim().length === 0
+      ) {
+        return res.status(400).json({
+          success: false,
+          error: 'Unit cannot be empty',
+        });
+      }
+
+      updateData.unit = unit.trim();
+    }
+
+    // -------------------------
+    // Quantity
+    // -------------------------
+    let quantityWasUpdated = false;
+
+    if (quantity !== undefined) {
+      const parsedQuantity = Number(quantity);
+
+      if (
+        !Number.isFinite(parsedQuantity) ||
+        parsedQuantity < 0
+      ) {
+        return res.status(400).json({
+          success: false,
+          error:
+            'Quantity must be a valid non-negative number',
+        });
+      }
+
+      updateData.quantity = parsedQuantity;
+      quantityWasUpdated = true;
+    }
+
+    // -------------------------
+    // Minimum order quantity
+    // -------------------------
+    if (minOrderQuantity !== undefined) {
+      const parsedMinOrderQuantity =
+        Number(minOrderQuantity);
+
+      if (
+        !Number.isFinite(parsedMinOrderQuantity) ||
+        parsedMinOrderQuantity <= 0
+      ) {
+        return res.status(400).json({
+          success: false,
+          error:
+            'Minimum order quantity must be greater than 0',
+        });
+      }
+
+      updateData.minOrderQuantity =
+        parsedMinOrderQuantity;
+    }
+
+    // -------------------------
+    // Images
+    // -------------------------
+    if (imageUrl !== undefined) {
+      updateData.imageUrl = imageUrl || null;
+    }
+
+    if (imagePublicId !== undefined) {
+      updateData.imagePublicId =
+        imagePublicId || null;
+    }
+
+    // -------------------------
+    // Status
+    // -------------------------
+    if (status !== undefined) {
+      const normalizedStatus = String(status)
+        .trim()
+        .toUpperCase();
+
+      if (!VALID_STATUSES.includes(normalizedStatus)) {
+        return res.status(400).json({
+          success: false,
+          error: `Invalid status. Allowed values: ${VALID_STATUSES.join(', ')}`,
+        });
+      }
+
+      updateData.status = normalizedStatus;
+    }
+
+    // -------------------------
+    // Automatically update status
+    // -------------------------
+    if (quantityWasUpdated && status === undefined) {
+      if (updateData.quantity === 0) {
+        updateData.status = 'OUT_OF_STOCK';
+      } else {
+        updateData.status = 'AVAILABLE';
+      }
+    }
+
+    // -------------------------
+    // Update database
+    // -------------------------
     const updatedProduce = await prisma.produce.update({
-      where: { id },
+      where: {
+        id,
+      },
+
       data: updateData,
+
       include: {
         farmer: {
           include: {
@@ -314,7 +698,7 @@ const updateProduce = async (req, res, next) => {
 };
 
 /**
- * Delete or archive produce item
+ * Delete produce listing
  * DELETE /api/produce/:id
  */
 const deleteProduce = async (req, res, next) => {
@@ -322,7 +706,9 @@ const deleteProduce = async (req, res, next) => {
     const { id } = req.params;
 
     const existing = await prisma.produce.findUnique({
-      where: { id },
+      where: {
+        id,
+      },
     });
 
     if (!existing) {
@@ -332,21 +718,39 @@ const deleteProduce = async (req, res, next) => {
       });
     }
 
+    // -------------------------
+    // Check authentication
+    // -------------------------
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required',
+      });
+    }
+
+    // -------------------------
+    // Check ownership
+    // -------------------------
     if (req.user.role !== 'ADMIN') {
       const farmer = await prisma.farmer.findUnique({
-        where: { userId: req.user.id },
+        where: {
+          userId: req.user.id,
+        },
       });
 
       if (!farmer || farmer.id !== existing.farmerId) {
         return res.status(403).json({
           success: false,
-          error: 'Forbidden: You can only delete your own produce listings',
+          error:
+            'Forbidden: You can only delete your own produce listings',
         });
       }
     }
 
     await prisma.produce.delete({
-      where: { id },
+      where: {
+        id,
+      },
     });
 
     return res.status(200).json({

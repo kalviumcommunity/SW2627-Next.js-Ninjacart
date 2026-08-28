@@ -19,7 +19,15 @@ class OrderController {
         });
       }
 
-      // Find retailer profile for the current user
+      for (const item of items) {
+        if (!item.produceId || typeof item.quantity !== 'number' || item.quantity <= 0) {
+          return res.status(400).json({
+            success: false,
+            error: 'Each item must have a valid produceId and a positive quantity',
+          });
+        }
+      }
+
       const retailer = await prisma.retailer.findUnique({
         where: { userId: req.user.id },
       });
@@ -27,28 +35,27 @@ class OrderController {
       if (!retailer) {
         return res.status(403).json({
           success: false,
-          error: 'Only registered retailers can place orders. Retailer profile not found.',
+          error: 'Retailer profile not found for this user',
         });
       }
 
-      const order = await inventoryService.placeOrderWithInventoryDeduction({
+      const orderResult = await inventoryService.placeOrderWithInventoryDeduction({
         retailerId: retailer.id,
         items,
-        deliveryAddress,
-        notes,
+        deliveryAddress: deliveryAddress || null,
+        notes: notes || null,
       });
 
       return res.status(201).json({
         success: true,
         message: 'Order placed successfully',
-        data: order,
+        data: orderResult,
       });
     } catch (error) {
       if (error.statusCode) {
         return res.status(error.statusCode).json({
           success: false,
           error: error.message,
-          code: error.code || undefined,
         });
       }
       next(error);
