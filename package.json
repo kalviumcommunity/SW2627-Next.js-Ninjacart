@@ -9,9 +9,11 @@
     "dev:frontend": "npm --prefix frontend run dev",
     "install:all": "npm install && npm --prefix backend install && npm --prefix frontend install",
     "start": "npm --prefix backend start",
-    "test": "npm --prefix backend test",
+    "test": "npm --prefix backend run test:all",
+    "test:catalogue": "npm --prefix backend run test:catalogue",
     "test:concurrency": "npm --prefix backend run test:concurrency",
     "seed": "npm --prefix backend run seed",
+    "seed:bulk": "npm --prefix backend run seed:bulk",
     "prisma:generate": "npm --prefix backend run prisma:generate",
     "prisma:migrate": "npm --prefix backend run prisma:migrate"
   },

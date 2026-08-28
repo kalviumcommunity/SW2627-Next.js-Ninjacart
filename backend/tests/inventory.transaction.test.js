@@ -167,7 +167,7 @@ async function runConcurrencyTest() {
       include: { retailer: true },
     });
 
-    const tokenA = generateToken(farmerUser ? retailerUserA : null);
+    const tokenA = generateToken(retailerUserA);
     const tokenB = generateToken(retailerUserB);
 
     recordTest('2. Created Farmer and 2 Concurrent Retailers', true, 'Retailer A & Retailer B ready');
