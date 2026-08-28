@@ -1,13 +1,14 @@
 import React from 'react';
+import Link from 'next/link';
 import { Produce } from '../lib/api';
 
 interface ProductCardProps {
-  product: Produce;
-  onAddToCart?: (product: Produce) => void;
+  produce: Produce;
+  onOrderClick?: (produce: Produce) => void;
 }
 
-export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
-  const isAvailable = product.status === 'AVAILABLE' && product.quantity > 0;
+export const ProductCard: React.FC<ProductCardProps> = ({ produce, onOrderClick }) => {
+  const isAvailable = produce.status === 'AVAILABLE' && produce.quantity > 0;
 
   return (
     <div
@@ -19,15 +20,15 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
       {/* Product Image & Badges */}
       <div className="relative aspect-[4/3] w-full overflow-hidden bg-gray-100">
         <img
-          src={product.imageUrl || 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=800&q=80'}
-          alt={product.name}
+          src={produce.imageUrl || 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=800&q=80'}
+          alt={produce.name}
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           loading="lazy"
         />
 
         {/* Category Tag */}
         <span className="absolute top-3 left-3 rounded-full bg-white/90 px-3 py-1 text-xs font-semibold tracking-wide text-gray-700 shadow-sm backdrop-blur-md">
-          {product.category}
+          {produce.category}
         </span>
 
         {/* Stock Badge Overlay for Sold Out */}
@@ -43,22 +44,22 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
       {/* Card Content */}
       <div className="flex flex-1 flex-col p-5">
         {/* Farmer Attribution */}
-        {product.farmer?.user?.name && (
+        {produce.farmer?.user?.name && (
           <p className="mb-1 text-xs font-medium text-emerald-700">
-            Grown by {product.farmer.user.name}
+            Grown by {produce.farmer.user.name}
           </p>
         )}
 
         {/* Product Title */}
         <h3 className="line-clamp-1 text-base font-bold text-gray-900 transition-colors group-hover:text-emerald-700">
-          {product.name}
+          {produce.name}
         </h3>
 
         {/* Pricing & Stock Status */}
         <div className="mt-4 flex items-baseline justify-between">
           <div>
-            <span className="text-2xl font-black text-gray-900">₹{product.price}</span>
-            <span className="text-xs font-medium text-gray-500"> / {product.unit || 'kg'}</span>
+            <span className="text-2xl font-black text-gray-900">₹{produce.price}</span>
+            <span className="text-xs font-medium text-gray-500"> / {produce.unit || 'kg'}</span>
           </div>
 
           {/* Stock / Quantity Display */}
@@ -66,7 +67,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
             {isAvailable ? (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 border border-emerald-200/60">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                {product.quantity} {product.unit || 'kg'} left
+                {produce.quantity} {produce.unit || 'kg'} left
               </span>
             ) : (
               <span className="inline-flex items-center rounded-full bg-red-50 px-2.5 py-1 text-xs font-bold text-red-600 border border-red-200">
@@ -81,7 +82,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
           {isAvailable ? (
             <button
               type="button"
-              onClick={() => onAddToCart && onAddToCart(product)}
+              onClick={() => onOrderClick && onOrderClick(produce)}
               className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-emerald-700 hover:shadow active:scale-[0.98] cursor-pointer"
             >
               <svg

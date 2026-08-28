@@ -74,11 +74,14 @@ async function runProduceTests() {
     await prisma.$connect();
     recordTest('2. PostgreSQL connection works', true, 'Connected to DB');
 
-    // Clean up
-    await prisma.produce.deleteMany({});
-    await prisma.farmer.deleteMany({});
-    await prisma.retailer.deleteMany({});
-    await prisma.user.deleteMany({});
+    // Clean up only test records
+    const testEmails = ['test.farmer@example.com', 'test.retailer@example.com'];
+    await prisma.orderItem.deleteMany({ where: { order: { retailer: { user: { email: { in: testEmails } } } } } });
+    await prisma.order.deleteMany({ where: { retailer: { user: { email: { in: testEmails } } } } });
+    await prisma.produce.deleteMany({ where: { farmer: { user: { email: { in: testEmails } } } } });
+    await prisma.farmer.deleteMany({ where: { user: { email: { in: testEmails } } } });
+    await prisma.retailer.deleteMany({ where: { user: { email: { in: testEmails } } } });
+    await prisma.user.deleteMany({ where: { email: { in: testEmails } } });
 
     // Register a Farmer
     const farmerRegPayload = {

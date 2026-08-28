@@ -39,74 +39,11 @@ class OrderController {
         });
       }
 
-      const orderResult = await prisma.$transaction(async (tx) => {
-        let totalAmount = 0;
-        const orderItemsData = [];
-
-        for (const item of items) {
-          const { produceId, quantity: requestedQuantity } = item;
-
-          const updatedCount = await tx.produce.updateMany({
-            where: {
-              id: produceId,
-              quantity: { gte: requestedQuantity },
-            },
-            data: {
-              quantity: { decrement: requestedQuantity },
-            },
-          });
-
-          if (updatedCount.count === 0) {
-            const produceCheck = await tx.produce.findUnique({ where: { id: produceId } });
-            if (!produceCheck) {
-              throw new Error(`Produce item ${produceId} not found`);
-            } else {
-              throw new Error(`Insufficient stock for produce: ${produceCheck.name}. Requested: ${requestedQuantity}, Available: ${produceCheck.quantity}`);
-            }
-          }
-
-          const updatedProduce = await tx.produce.findUnique({
-            where: { id: produceId },
-          });
-
-          if (updatedProduce.quantity === 0) {
-            await tx.produce.update({
-              where: { id: produceId },
-              data: { status: 'OUT_OF_STOCK' },
-            });
-          }
-
-          const itemTotal = updatedProduce.price * requestedQuantity;
-          totalAmount += itemTotal;
-
-          orderItemsData.push({
-            produceId,
-            quantity: requestedQuantity,
-            unitPrice: updatedProduce.price,
-            totalPrice: itemTotal,
-          });
-        }
-
-        return await tx.order.create({
-          data: {
-            retailerId: retailer.id,
-            totalAmount,
-            deliveryAddress: deliveryAddress || null,
-            notes: notes || null,
-            items: {
-              create: orderItemsData,
-            },
-          },
-          include: {
-            items: {
-              include: {
-                produce: {
-                  select: { id: true, name: true, unit: true, price: true, imageUrl: true },
-                },
-              },
-            },
-          },
-        });
+      const orderResult = await inventoryService.placeOrderWithInventoryDeduction({
+        retailerId: retailer.id,
+        items,
+        deliveryAddress: deliveryAddress || null,
+        notes: notes || null,
       });
 
       return res.status(201).json({
@@ -115,8 +52,8 @@ class OrderController {
         data: orderResult,
       });
     } catch (error) {
-      if (error.message && (error.message.includes('Insufficient stock') || error.message.includes('not found'))) {
-        return res.status(400).json({
+      if (error.statusCode) {
+        return res.status(error.statusCode).json({
           success: false,
           error: error.message,
         });
