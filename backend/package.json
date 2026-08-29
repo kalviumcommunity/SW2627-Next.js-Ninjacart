@@ -11,7 +11,7 @@
     "prisma:deploy": "prisma migrate deploy",
     "seed": "node seed.js",
     "seed:bulk": "node seed.js --bulk",
-    "test": "node test/verify.js && node test/produce_upload.verify.js",
+    "test": "node test/verify.js && node test/order.test.js && node test/produce.test.js && node test/produce_upload.verify.js",
     "test:catalogue": "node tests/catalogue.pagination.test.js",
     "test:concurrency": "node tests/inventory.transaction.test.js",
     "test:filter": "node tests/catalogue.filter.test.js"
