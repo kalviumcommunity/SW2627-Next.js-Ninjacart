@@ -263,6 +263,14 @@ const getProduces = async (req, res, next) => {
       }
 
       where.status = normalizedStatus;
+    } else {
+      // By default, exclude OUT_OF_STOCK and ARCHIVED for general catalogue browsing
+      // Unless it's a farmer viewing their own products
+      if (!farmerId) {
+        where.status = {
+          in: ['AVAILABLE', 'LOW_STOCK'],
+        };
+      }
     }
 
     // -------------------------

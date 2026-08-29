@@ -63,7 +63,7 @@ async function runTests() {
   try {
     // Start temporary test server
     const testPort = 5055;
-    server = app.listen(testPort);
+    server = app.listen(testPort, '127.0.0.1');
     baseUrl = `http://localhost:${testPort}`;
 
     // 1. Health check

@@ -67,7 +67,7 @@ async function runVerification() {
   try {
     // 1. Start test server
     server = http.createServer(app);
-    await new Promise((resolve) => server.listen(0, resolve));
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
     const port = server.address().port;
     baseUrl = `http://localhost:${port}`;
     recordTest('1. Express server starts successfully', true, `Listening on port ${port}`);

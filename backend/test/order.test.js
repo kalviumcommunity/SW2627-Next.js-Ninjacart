@@ -53,7 +53,7 @@ async function runOrderTests() {
   try {
     // 1. Start Server
     await new Promise((resolve) => {
-      server = app.listen(0, () => {
+      server = app.listen(0, '127.0.0.1', () => {
         const port = server.address().port;
         baseUrl = `http://localhost:${port}`;
         recordTest('1. Express server starts successfully', true, `Listening on port ${port}`);
