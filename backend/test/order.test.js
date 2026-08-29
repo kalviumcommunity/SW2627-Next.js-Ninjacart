@@ -147,7 +147,7 @@ async function runOrderTests() {
     const [res1, res2] = await Promise.all([req1, req2]);
     
     const successCount = [res1, res2].filter(r => r.status === 201).length;
-    const failCount = [res1, res2].filter(r => r.status === 400).length;
+    const failCount = [res1, res2].filter(r => r.status === 409).length;
     
     const concurrencyValid = successCount === 1 && failCount === 1;
     recordTest('6. Concurrency safe: Only one of two concurrent requests for 50 units succeeds (90 available)', concurrencyValid, `Successes: ${successCount}, Fails: ${failCount}`);
