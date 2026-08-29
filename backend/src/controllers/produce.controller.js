@@ -47,10 +47,9 @@ const createProduce = async (req, res, next) => {
       typeof name !== 'string' ||
       name.trim().length === 0
     ) {
-      return res.status(400).json({
-        success: false,
-        error: 'Produce name is required',
-      });
+      const error = new Error('Produce name is required');
+      error.statusCode = 400;
+      return next(error);
     }
 
     // -------------------------
@@ -59,10 +58,9 @@ const createProduce = async (req, res, next) => {
     const parsedPrice = Number(price);
 
     if (!Number.isFinite(parsedPrice) || parsedPrice < 0) {
-      return res.status(400).json({
-        success: false,
-        error: 'Valid non-negative price is required',
-      });
+      const error = new Error('Valid non-negative price is required');
+      error.statusCode = 400;
+      return next(error);
     }
 
     // -------------------------
@@ -74,10 +72,9 @@ const createProduce = async (req, res, next) => {
         : Number(quantity);
 
     if (!Number.isFinite(parsedQuantity) || parsedQuantity < 0) {
-      return res.status(400).json({
-        success: false,
-        error: 'Quantity must be a non-negative number',
-      });
+      const error = new Error('Quantity must be a non-negative number');
+      error.statusCode = 400;
+      return next(error);
     }
 
     // -------------------------
@@ -94,10 +91,9 @@ const createProduce = async (req, res, next) => {
       !Number.isFinite(parsedMinOrderQuantity) ||
       parsedMinOrderQuantity <= 0
     ) {
-      return res.status(400).json({
-        success: false,
-        error: 'Minimum order quantity must be greater than 0',
-      });
+      const error = new Error('Minimum order quantity must be greater than 0');
+      error.statusCode = 400;
+      return next(error);
     }
 
     // -------------------------
@@ -109,10 +105,9 @@ const createProduce = async (req, res, next) => {
       normalizedCategory = String(category).trim().toUpperCase();
 
       if (!VALID_CATEGORIES.includes(normalizedCategory)) {
-        return res.status(400).json({
-          success: false,
-          error: `Invalid category. Allowed values: ${VALID_CATEGORIES.join(', ')}`,
-        });
+        const error = new Error(`Invalid category. Allowed values: ${VALID_CATEGORIES.join(', ')}`);
+      error.statusCode = 400;
+      return next(error);
       }
     }
 
@@ -125,10 +120,9 @@ const createProduce = async (req, res, next) => {
       normalizedStatus = String(status).trim().toUpperCase();
 
       if (!VALID_STATUSES.includes(normalizedStatus)) {
-        return res.status(400).json({
-          success: false,
-          error: `Invalid status. Allowed values: ${VALID_STATUSES.join(', ')}`,
-        });
+        const error = new Error(`Invalid status. Allowed values: ${VALID_STATUSES.join(', ')}`);
+      error.statusCode = 400;
+      return next(error);
       }
     }
 
@@ -141,10 +135,9 @@ const createProduce = async (req, res, next) => {
     // Find authenticated farmer
     // -------------------------
     if (!req.user || !req.user.id) {
-      return res.status(401).json({
-        success: false,
-        error: 'Authentication required',
-      });
+      const error = new Error('Authentication required');
+      error.statusCode = 401;
+      return next(error);
     }
 
     const farmer = await prisma.farmer.findUnique({
@@ -154,10 +147,9 @@ const createProduce = async (req, res, next) => {
     });
 
     if (!farmer) {
-      return res.status(403).json({
-        success: false,
-        error: 'Farmer profile not found for this user',
-      });
+      const error = new Error('Farmer profile not found for this user');
+      error.statusCode = 404;
+      return next(error);
     }
 
     // -------------------------
@@ -256,10 +248,9 @@ const getProduces = async (req, res, next) => {
       const normalizedStatus = status.trim().toUpperCase();
 
       if (!VALID_STATUSES.includes(normalizedStatus)) {
-        return res.status(400).json({
-          success: false,
-          error: `Invalid status. Allowed values: ${VALID_STATUSES.join(', ')}`,
-        });
+        const error = new Error(`Invalid status. Allowed values: ${VALID_STATUSES.join(', ')}`);
+      error.statusCode = 400;
+      return next(error);
       }
 
       where.status = normalizedStatus;
@@ -269,6 +260,10 @@ const getProduces = async (req, res, next) => {
       if (!farmerId) {
         where.status = {
           in: ['AVAILABLE', 'LOW_STOCK'],
+        };
+        // Explicitly exclude sold-out listings (quantity <= 0)
+        where.quantity = {
+          gt: 0,
         };
       }
     }
@@ -280,10 +275,9 @@ const getProduces = async (req, res, next) => {
       const normalizedCategory = category.trim().toUpperCase();
 
       if (!VALID_CATEGORIES.includes(normalizedCategory)) {
-        return res.status(400).json({
-          success: false,
-          error: `Invalid category. Allowed values: ${VALID_CATEGORIES.join(', ')}`,
-        });
+        const error = new Error(`Invalid category. Allowed values: ${VALID_CATEGORIES.join(', ')}`);
+      error.statusCode = 400;
+      return next(error);
       }
 
       where.category = normalizedCategory;
@@ -420,10 +414,9 @@ const getProduceById = async (req, res, next) => {
     });
 
     if (!produce) {
-      return res.status(404).json({
-        success: false,
-        error: 'Produce item not found',
-      });
+      const error = new Error('Produce item not found');
+      error.statusCode = 404;
+      return next(error);
     }
 
     return res.status(200).json({
@@ -466,20 +459,18 @@ const updateProduce = async (req, res, next) => {
     });
 
     if (!existing) {
-      return res.status(404).json({
-        success: false,
-        error: 'Produce item not found',
-      });
+      const error = new Error('Produce item not found');
+      error.statusCode = 404;
+      return next(error);
     }
 
     // -------------------------
     // Check authentication
     // -------------------------
     if (!req.user || !req.user.id) {
-      return res.status(401).json({
-        success: false,
-        error: 'Authentication required',
-      });
+      const error = new Error('Authentication required');
+      error.statusCode = 401;
+      return next(error);
     }
 
     // -------------------------
@@ -493,11 +484,9 @@ const updateProduce = async (req, res, next) => {
       });
 
       if (!farmer || farmer.id !== existing.farmerId) {
-        return res.status(403).json({
-          success: false,
-          error:
-            'Forbidden: You can only modify your own produce listings',
-        });
+        const error = new Error('Forbidden: You can only modify your own produce listings');
+      error.statusCode = 403;
+      return next(error);
       }
     }
 
@@ -511,10 +500,9 @@ const updateProduce = async (req, res, next) => {
         typeof name !== 'string' ||
         name.trim().length === 0
       ) {
-        return res.status(400).json({
-          success: false,
-          error: 'Produce name cannot be empty',
-        });
+        const error = new Error('Produce name cannot be empty');
+      error.statusCode = 400;
+      return next(error);
       }
 
       updateData.name = name.trim();
@@ -539,10 +527,9 @@ const updateProduce = async (req, res, next) => {
         .toUpperCase();
 
       if (!VALID_CATEGORIES.includes(normalizedCategory)) {
-        return res.status(400).json({
-          success: false,
-          error: `Invalid category. Allowed values: ${VALID_CATEGORIES.join(', ')}`,
-        });
+        const error = new Error(`Invalid category. Allowed values: ${VALID_CATEGORIES.join(', ')}`);
+      error.statusCode = 400;
+      return next(error);
       }
 
       updateData.category = normalizedCategory;
@@ -558,11 +545,9 @@ const updateProduce = async (req, res, next) => {
         !Number.isFinite(parsedPrice) ||
         parsedPrice < 0
       ) {
-        return res.status(400).json({
-          success: false,
-          error:
-            'Price must be a valid non-negative number',
-        });
+        const error = new Error('Price must be a valid non-negative number');
+      error.statusCode = 400;
+      return next(error);
       }
 
       updateData.price = parsedPrice;
@@ -576,10 +561,9 @@ const updateProduce = async (req, res, next) => {
         typeof unit !== 'string' ||
         unit.trim().length === 0
       ) {
-        return res.status(400).json({
-          success: false,
-          error: 'Unit cannot be empty',
-        });
+        const error = new Error('Unit cannot be empty');
+      error.statusCode = 400;
+      return next(error);
       }
 
       updateData.unit = unit.trim();
@@ -597,11 +581,9 @@ const updateProduce = async (req, res, next) => {
         !Number.isFinite(parsedQuantity) ||
         parsedQuantity < 0
       ) {
-        return res.status(400).json({
-          success: false,
-          error:
-            'Quantity must be a valid non-negative number',
-        });
+        const error = new Error('Quantity must be a valid non-negative number');
+      error.statusCode = 400;
+      return next(error);
       }
 
       updateData.quantity = parsedQuantity;
@@ -618,11 +600,9 @@ const updateProduce = async (req, res, next) => {
         !Number.isFinite(parsedMinOrderQuantity) ||
         parsedMinOrderQuantity <= 0
       ) {
-        return res.status(400).json({
-          success: false,
-          error:
-            'Minimum order quantity must be greater than 0',
-        });
+        const error = new Error('Minimum order quantity must be greater than 0');
+      error.statusCode = 400;
+      return next(error);
       }
 
       updateData.minOrderQuantity =
@@ -650,10 +630,9 @@ const updateProduce = async (req, res, next) => {
         .toUpperCase();
 
       if (!VALID_STATUSES.includes(normalizedStatus)) {
-        return res.status(400).json({
-          success: false,
-          error: `Invalid status. Allowed values: ${VALID_STATUSES.join(', ')}`,
-        });
+        const error = new Error(`Invalid status. Allowed values: ${VALID_STATUSES.join(', ')}`);
+      error.statusCode = 400;
+      return next(error);
       }
 
       updateData.status = normalizedStatus;
@@ -665,10 +644,9 @@ const updateProduce = async (req, res, next) => {
     if (quantityWasUpdated) {
       if (updateData.quantity === 0) {
         if (status !== undefined && String(status).trim().toUpperCase() === 'AVAILABLE') {
-          return res.status(400).json({
-            success: false,
-            error: 'Cannot set status to AVAILABLE when quantity is 0',
-          });
+          const error = new Error('Cannot set status to AVAILABLE when quantity is 0');
+      error.statusCode = 400;
+      return next(error);
         }
         updateData.status = 'OUT_OF_STOCK';
       } else if (status === undefined) {
@@ -725,20 +703,18 @@ const deleteProduce = async (req, res, next) => {
     });
 
     if (!existing) {
-      return res.status(404).json({
-        success: false,
-        error: 'Produce item not found',
-      });
+      const error = new Error('Produce item not found');
+      error.statusCode = 404;
+      return next(error);
     }
 
     // -------------------------
     // Check authentication
     // -------------------------
     if (!req.user || !req.user.id) {
-      return res.status(401).json({
-        success: false,
-        error: 'Authentication required',
-      });
+      const error = new Error('Authentication required');
+      error.statusCode = 401;
+      return next(error);
     }
 
     // -------------------------
@@ -752,11 +728,9 @@ const deleteProduce = async (req, res, next) => {
       });
 
       if (!farmer || farmer.id !== existing.farmerId) {
-        return res.status(403).json({
-          success: false,
-          error:
-            'Forbidden: You can only delete your own produce listings',
-        });
+        const error = new Error('Forbidden: You can only delete your own produce listings');
+      error.statusCode = 403;
+      return next(error);
       }
     }
 

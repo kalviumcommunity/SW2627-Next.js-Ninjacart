@@ -61,7 +61,7 @@ jobs:
           DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/ninjacart_test"
 
       - name: Run Backend Tests
-        run: npm test && npm run test:concurrency
+        run: npm test && npm run test:catalogue && npm run test:concurrency && npm run test:filter
         env:
           DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/ninjacart_test"
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
