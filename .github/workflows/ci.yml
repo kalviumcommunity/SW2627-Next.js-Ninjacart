@@ -64,7 +64,7 @@ jobs:
         run: npm test && npm run test:catalogue && npm run test:concurrency && npm run test:filter
         env:
           DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/ninjacart_test"
-          JWT_SECRET: ${{ secrets.JWT_SECRET || 'test_jwt_secret_for_ci_12345' }}
+          JWT_SECRET: "test_jwt_secret_for_ci_12345"
 
   frontend-checks:
     name: Frontend CI Checks
