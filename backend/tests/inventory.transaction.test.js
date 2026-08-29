@@ -279,7 +279,7 @@ async function runConcurrencyTest() {
       Authorization: `Bearer ${tokenA}`,
     });
 
-    const thirdOrderRejected = resC.status === 400 && resC.body?.success === false;
+    const thirdOrderRejected = resC.status === 409 && resC.body?.success === false;
     recordTest(
       '9. Subsequent order request after stock exhaustion is rejected',
       thirdOrderRejected,
