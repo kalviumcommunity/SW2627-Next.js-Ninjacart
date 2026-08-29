@@ -182,7 +182,9 @@ const thirdOrderRejected = resC.status === 409 && resC.body?.success === false;
     console.log(`📊 Summary: Total: ${results.length} | Passed: ${passed} | Failed: ${results.length - passed}`);
     console.log('======================================================\n');
     
-    if (passed === results.length) { process.exit(0); } else {
+    if (passed === results.length) {
+      process.exit(0);
+    } else {
       process.exit(1);
     }
   }

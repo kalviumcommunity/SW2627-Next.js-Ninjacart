@@ -279,6 +279,7 @@ async function runConcurrencyTest() {
       Authorization: `Bearer ${tokenA}`,
     });
 
+    // Explicitly expecting 409 Conflict as per the requirement
     const thirdOrderRejected = resC.status === 409 && resC.body?.success === false;
     recordTest(
       '9. Subsequent order request after stock exhaustion is rejected',
