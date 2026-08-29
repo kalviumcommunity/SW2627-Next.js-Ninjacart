@@ -64,6 +64,7 @@ jobs:
         run: npm run test:all
         env:
           DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/ninjacart_test"
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
 
   frontend-checks:
     name: Frontend CI Checks
