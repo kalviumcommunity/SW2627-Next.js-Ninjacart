@@ -84,6 +84,14 @@ class OrderController {
           });
         }
         whereClause.retailerId = retailer.id;
+      } else if (role === 'ADMIN') {
+        // Admin sees all
+        whereClause = {};
+      } else {
+        return res.status(403).json({
+          success: false,
+          error: 'Access denied: You are not authorized to view orders',
+        });
       }
 
       const orders = await prisma.order.findMany({
@@ -132,9 +140,30 @@ class OrderController {
   async getOrderById(req, res, next) {
     try {
       const { id } = req.params;
+      const role = req.user.role;
+      let whereClause = { id };
 
-      const order = await prisma.order.findUnique({
-        where: { id },
+      if (role === 'RETAILER') {
+        const retailer = await prisma.retailer.findUnique({
+          where: { userId: req.user.id },
+        });
+
+        if (!retailer) {
+          return res.status(404).json({
+            success: false,
+            error: 'Retailer profile not found',
+          });
+        }
+        whereClause.retailerId = retailer.id;
+      } else if (role !== 'ADMIN') {
+        return res.status(403).json({
+          success: false,
+          error: 'Access denied: You are not authorized to view this order',
+        });
+      }
+
+      const order = await prisma.order.findFirst({
+        where: whereClause,
         include: {
           items: {
             include: {

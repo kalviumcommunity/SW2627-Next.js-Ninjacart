@@ -164,14 +164,14 @@ async function runTests() {
     );
 
     // 9. Update produce item
-    const updateRes = await request('PUT', `/api/produce/${createdProduceId}`, {
+    const updateRes = await request('PATCH', `/api/produce/${createdProduceId}`, {
       price: 49.99,
       quantity: 120,
       status: 'AVAILABLE',
     }, {
       Authorization: `Bearer ${farmerToken}`,
     });
-    recordTest('9. Farmer PUT /api/produce/:id updates price and quantity', 
+    recordTest('9. Farmer PATCH /api/produce/:id updates price and quantity', 
       updateRes.status === 200 && 
       updateRes.body.data?.price === 49.99 &&
       updateRes.body.data?.quantity === 120
