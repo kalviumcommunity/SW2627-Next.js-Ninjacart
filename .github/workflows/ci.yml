@@ -15,6 +15,21 @@ jobs:
     name: Backend CI Checks
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ninjacart_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     defaults:
       run:
         working-directory: ./backend
@@ -37,6 +52,16 @@ jobs:
         run: |
           npx prisma validate
           npx prisma generate
+        env:
+          DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/ninjacart_test"
+
+      - name: Run Database Migrations
+        run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/ninjacart_test"
+
+      - name: Run Backend Tests
+        run: npm run test:all
         env:
           DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/ninjacart_test"
 
