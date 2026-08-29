@@ -224,7 +224,7 @@ async function runConcurrencyTest() {
 
     // 8. Assertions on Concurrency Outcomes
     const successResponses = [resA, resB].filter((r) => r.status === 201 && r.body?.success === true);
-    const failedResponses = [resA, resB].filter((r) => r.status === 400 && r.body?.success === false);
+    const failedResponses = [resA, resB].filter((r) => r.status === 409 && r.body?.success === false);
 
     const exactlyOneSucceeded = successResponses.length === 1;
     const exactlyOneFailed = failedResponses.length === 1;
@@ -236,7 +236,7 @@ async function runConcurrencyTest() {
     );
 
     recordTest(
-      '5. Exactly ONE concurrent order failed with HTTP 400 (Insufficient Stock)',
+      '5. Exactly ONE concurrent order failed with HTTP 409 (Insufficient Stock)',
       exactlyOneFailed,
       `Failure count: ${failedResponses.length}/2, Error: "${failedResponses[0]?.body?.error}"`
     );
