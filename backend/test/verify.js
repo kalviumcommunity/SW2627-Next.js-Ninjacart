@@ -67,7 +67,7 @@ async function runVerification() {
   try {
     // 1. Start test server
     server = http.createServer(app);
-    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+    await new Promise((resolve) => server.listen(0, '0.0.0.0', resolve));
     const port = server.address().port;
     baseUrl = `http://localhost:${port}`;
     recordTest('1. Express server starts successfully', true, `Listening on port ${port}`);
@@ -282,7 +282,7 @@ async function runVerification() {
     console.log(`📊 Summary: Total: ${total} | Passed: ${passed} | Failed: ${failed}`);
     console.log('======================================================\n');
 
-    if (failed > 0) {
+    if (failed === 0) { process.exit(0); } else {
       process.exit(1);
     }
   } catch (error) {

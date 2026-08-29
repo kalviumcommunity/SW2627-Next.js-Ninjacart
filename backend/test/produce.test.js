@@ -207,7 +207,7 @@ async function runProduceTests() {
     console.log(`📊 Summary: Total: ${total} | Passed: ${passed} | Failed: ${failed}`);
     console.log('======================================================\n');
 
-    if (failed > 0) {
+    if (failed === 0) { process.exit(0); } else {
       process.exit(1);
     }
   } catch (error) {

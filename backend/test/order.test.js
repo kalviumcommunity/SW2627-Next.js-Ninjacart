@@ -181,7 +181,7 @@ async function runOrderTests() {
     console.log(`📊 Summary: Total: ${results.length} | Passed: ${passed} | Failed: ${results.length - passed}`);
     console.log('======================================================\n');
     
-    if (passed !== results.length) {
+    if (passed === results.length) { process.exit(0); } else {
       process.exit(1);
     }
   }

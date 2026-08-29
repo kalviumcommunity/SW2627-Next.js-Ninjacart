@@ -205,7 +205,7 @@ async function runTests() {
       // ignore cleanup error
     }
 
-    if (failed > 0) {
+    if (failed === 0) { process.exit(0); } else {
       process.exit(1);
     }
   } catch (error) {
