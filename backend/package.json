@@ -14,7 +14,8 @@
     "test": "node test/verify.js && node test/order.test.js && node test/produce.test.js && node test/produce_upload.verify.js",
     "test:catalogue": "node tests/catalogue.pagination.test.js",
     "test:concurrency": "node tests/inventory.transaction.test.js",
-    "test:filter": "node tests/catalogue.filter.test.js"
+    "test:filter": "node tests/catalogue.filter.test.js",
+    "test:all": "npm test && npm run test:catalogue && npm run test:filter && npm run test:concurrency"
   },
   "prisma": {
     "seed": "node seed.js"
