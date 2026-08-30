@@ -141,9 +141,7 @@ const createProduce = async (req, res, next) => {
     }
 
     const farmer = await prisma.farmer.findUnique({
-      where: {
-        userId: req.user.id,
-      },
+      where: { userId: req.user.id },
     });
 
     if (!farmer) {
@@ -641,16 +639,18 @@ const updateProduce = async (req, res, next) => {
     // -------------------------
     // Status Logic
     // -------------------------
-    if (quantityWasUpdated) {
+    if (quantityWasUpdated && status === undefined) {
       if (updateData.quantity === 0) {
-        if (status !== undefined && String(status).trim().toUpperCase() === 'AVAILABLE') {
-          const error = new Error('Cannot set status to AVAILABLE when quantity is 0');
-      error.statusCode = 400;
-      return next(error);
-        }
         updateData.status = 'OUT_OF_STOCK';
-      } else if (status === undefined) {
+      } else {
         updateData.status = 'AVAILABLE';
+      }
+    } else if (quantityWasUpdated && status !== undefined) {
+      // If they explicitly requested a status, respect it but validate against quantity
+      if (updateData.quantity === 0 && String(status).trim().toUpperCase() === 'AVAILABLE') {
+        const error = new Error('Cannot set status to AVAILABLE when quantity is 0');
+        error.statusCode = 400;
+        return next(error);
       }
     }
 

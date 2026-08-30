@@ -49,12 +49,6 @@ class OrderController {
         data: orderResult,
       });
     } catch (error) {
-      if (error.statusCode) {
-        return res.status(error.statusCode).json({
-          success: false,
-          error: error.message,
-        });
-      }
       next(error);
     }
   }
