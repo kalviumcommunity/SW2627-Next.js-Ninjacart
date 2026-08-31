@@ -53,7 +53,7 @@ async function runOrderTests() {
   try {
     // 1. Start Server
     await new Promise((resolve) => {
-      server = app.listen(0, () => {
+      server = app.listen(0, '127.0.0.1', () => {
         const port = server.address().port;
         baseUrl = `http://localhost:${port}`;
         recordTest('1. Express server starts successfully', true, `Listening on port ${port}`);
@@ -147,8 +147,8 @@ async function runOrderTests() {
     const [res1, res2] = await Promise.all([req1, req2]);
     
     const successCount = [res1, res2].filter(r => r.status === 201).length;
-    const failCount = [res1, res2].filter(r => r.status === 400).length;
-    
+    const failCount = [res1, res2].filter(r => r.status === 409).length;
+
     const concurrencyValid = successCount === 1 && failCount === 1;
     recordTest('6. Concurrency safe: Only one of two concurrent requests for 50 units succeeds (90 available)', concurrencyValid, `Successes: ${successCount}, Fails: ${failCount}`);
 
@@ -181,7 +181,9 @@ async function runOrderTests() {
     console.log(`📊 Summary: Total: ${results.length} | Passed: ${passed} | Failed: ${results.length - passed}`);
     console.log('======================================================\n');
     
-    if (passed !== results.length) {
+    if (passed === results.length) {
+      process.exit(0);
+    } else {
       process.exit(1);
     }
   }

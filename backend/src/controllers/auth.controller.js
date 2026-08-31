@@ -15,32 +15,33 @@ const register = async (req, res, next) => {
 
     // 1. Validation
     if (!name || typeof name !== 'string' || !name.trim()) {
-      return res.status(400).json({
-        success: false,
-        error: 'Name is required',
-      });
+      const error = new Error('Name is required');
+      error.statusCode = 400;
+      return next(error);
     }
 
-    if (!email || typeof email !== 'string' || !EMAIL_REGEX.test(email.trim())) {
-      return res.status(400).json({
-        success: false,
-        error: 'Valid email is required',
-      });
+    if (
+      !email ||
+      typeof email !== 'string' ||
+      !EMAIL_REGEX.test(email.trim())
+    ) {
+      const error = new Error('Valid email is required');
+      error.statusCode = 400;
+      return next(error);
     }
 
     if (!password || typeof password !== 'string' || password.length < 6) {
-      return res.status(400).json({
-        success: false,
-        error: 'Password must be at least 6 characters long',
-      });
+      const error = new Error('Password must be at least 6 characters long');
+      error.statusCode = 400;
+      return next(error);
     }
 
-    const normalizedRole = typeof role === 'string' ? role.toUpperCase().trim() : '';
+    const normalizedRole =
+      typeof role === 'string' ? role.toUpperCase().trim() : '';
     if (!['FARMER', 'RETAILER'].includes(normalizedRole)) {
-      return res.status(400).json({
-        success: false,
-        error: 'Role must be either FARMER or RETAILER',
-      });
+      const error = new Error('Role must be either FARMER or RETAILER');
+      error.statusCode = 400;
+      return next(error);
     }
 
     const normalizedEmail = email.toLowerCase().trim();
@@ -51,10 +52,9 @@ const register = async (req, res, next) => {
     });
 
     if (existingUser) {
-      return res.status(409).json({
-        success: false,
-        error: 'User with this email already exists',
-      });
+      const error = new Error('User with this email already exists');
+      error.statusCode = 409;
+      return next(error);
     }
 
     // 3. Hash password
@@ -84,7 +84,7 @@ const register = async (req, res, next) => {
       },
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
 
@@ -97,13 +97,13 @@ const login = async (req, res, next) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({
-        success: false,
-        error: 'Email and password are required',
-      });
+      const error = new Error('Email and password are required');
+      error.statusCode = 400;
+      return next(error);
     }
 
-    const normalizedEmail = typeof email === 'string' ? email.toLowerCase().trim() : '';
+    const normalizedEmail =
+      typeof email === 'string' ? email.toLowerCase().trim() : '';
 
     // 1. Find user by email
     const user = await prisma.user.findUnique({
@@ -111,29 +111,28 @@ const login = async (req, res, next) => {
     });
 
     if (!user) {
-      return res.status(401).json({
-        success: false,
-        error: 'Invalid email or password',
-      });
+      const error = new Error('Invalid email or password');
+      error.statusCode = 401;
+      return next(error);
     }
 
     // 2. Compare password with bcrypt
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(401).json({
-        success: false,
-        error: 'Invalid email or password',
-      });
+      const error = new Error('Invalid email or password');
+      error.statusCode = 401;
+      return next(error);
     }
 
     // 3. Ensure JWT_SECRET is configured
     const jwtSecret = process.env.JWT_SECRET;
     if (!jwtSecret) {
-      console.error('FATAL: JWT_SECRET environment variable is not configured.');
-      return res.status(500).json({
-        success: false,
-        error: 'JWT_SECRET is not configured on server',
-      });
+      console.error(
+        'FATAL: JWT_SECRET environment variable is not configured.'
+      );
+      const error = new Error('JWT_SECRET is not configured on server');
+      error.statusCode = 500;
+      return next(error);
     }
 
     // 4. Generate JWT
@@ -163,7 +162,7 @@ const login = async (req, res, next) => {
       },
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
 
@@ -183,7 +182,7 @@ const getMe = async (req, res, next) => {
       },
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
 
