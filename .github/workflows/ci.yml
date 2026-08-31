@@ -42,11 +42,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # If this is a PR from a fork, repository secrets are not available.
-      # Add a fallback JWT_SECRET for test runs from forks so tests don't crash.
-      - name: Provide fallback JWT_SECRET for forked PRs
-        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
-        run: echo "JWT_SECRET=ci-test-jwt-secret" >> $GITHUB_ENV
+      # Provide a fallback JWT_SECRET for CI test runs if the repository secret is missing.
+      # This ensures tests don't crash with "JWT_SECRET environment variable is not configured"
+      - name: Provide fallback JWT_SECRET for tests
+        run: |
+          if [ -z "$JWT_SECRET" ]; then
+            echo "JWT_SECRET=ci-test-jwt-secret-do-not-use" >> $GITHUB_ENV
+          fi
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
