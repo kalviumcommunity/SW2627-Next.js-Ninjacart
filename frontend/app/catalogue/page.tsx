@@ -27,6 +27,7 @@ export default function RetailerCataloguePage() {
   const [sortBy, setSortBy] = useState<'createdAt' | 'price' | 'quantity' | 'name'>('createdAt');
   const [order, setOrder] = useState<'asc' | 'desc'>('desc');
   const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Selected produce for quick order modal
   const [selectedProduce, setSelectedProduce] = useState<Produce | null>(null);
@@ -43,6 +44,7 @@ export default function RetailerCataloguePage() {
     sortOrder: 'asc' | 'desc'
   ) => {
     setIsLoading(true);
+    setErrorMessage(null);
     try {
       const res = await getProduces({
         page,
@@ -54,12 +56,16 @@ export default function RetailerCataloguePage() {
         order: sortOrder,
       });
 
-      setProduces(res.produces);
+      setProduces(res.produces.filter((produce) => produce.status !== 'OUT_OF_STOCK' && produce.status !== 'ARCHIVED' && produce.quantity > 0));
       setTotalPages(res.pagination.totalPages);
       setTotalCount(res.pagination.total);
       setCurrentPage(res.pagination.page);
     } catch (err) {
       console.error('Failed to load produces:', err);
+      setProduces([]);
+      setTotalPages(1);
+      setTotalCount(0);
+      setErrorMessage(err instanceof Error ? err.message : 'Unable to load the catalogue. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -92,6 +98,33 @@ export default function RetailerCataloguePage() {
 
   return (
     <div className="main-content">
+      {errorMessage && (
+        <div
+          role="alert"
+          style={{
+            backgroundColor: '#fef2f2',
+            border: '1px solid #fecaca',
+            borderRadius: '10px',
+            color: '#b91c1c',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '1rem',
+            marginBottom: '1rem',
+            padding: '0.85rem 1rem',
+          }}
+        >
+          <span>Unable to load the catalogue: {errorMessage}</span>
+          <button
+            type="button"
+            onClick={() => setErrorMessage(null)}
+            aria-label="Dismiss catalogue error"
+            style={{ background: 'none', border: 0, color: '#b91c1c', cursor: 'pointer', fontSize: '1.2rem' }}
+          >
+            &times;
+          </button>
+        </div>
+      )}
       {/* Header Banner */}
       <section
         style={{

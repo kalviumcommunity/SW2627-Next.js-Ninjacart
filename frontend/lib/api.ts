@@ -359,63 +359,9 @@ export async function getProduces(params: ProduceQueryParams = {}): Promise<Pagi
     const errorResult = await res.json().catch(() => null);
     throw new Error(errorResult?.error || 'Failed to fetch catalogue');
   } catch (error) {
-    if (error instanceof TypeError) {
-      // Backend unreachable — gracefully fallback to client-side filtered data
-    } else {
-      throw error;
-    }
+    throw error;
   }
 
-  // Client-side filtering fallback
-  let filtered = [...SAMPLE_PRODUCES];
-
-  if (category && category !== 'ALL') {
-    filtered = filtered.filter((p) => p.category.toUpperCase() === category.toUpperCase());
-  }
-
-  if (status && status !== 'ALL') {
-    filtered = filtered.filter((p) => p.status.toUpperCase() === status.toUpperCase());
-  }
-
-  if (search) {
-    const q = search.toLowerCase();
-    filtered = filtered.filter(
-      (p) =>
-        p.name.toLowerCase().includes(q) ||
-        (p.description && p.description.toLowerCase().includes(q))
-    );
-  }
-
-  if (farmerId) {
-    filtered = filtered.filter((p) => p.farmerId === farmerId);
-  }
-
-  // Sorting
-  filtered.sort((a, b) => {
-    let comparison = 0;
-    if (sortBy === 'price') comparison = a.price - b.price;
-    else if (sortBy === 'quantity') comparison = a.quantity - b.quantity;
-    else if (sortBy === 'name') comparison = a.name.localeCompare(b.name);
-    else comparison = (a.id > b.id ? 1 : -1);
-
-    return order === 'asc' ? comparison : -comparison;
-  });
-
-  const total = filtered.length;
-  const totalPages = Math.ceil(total / limit) || 1;
-  const start = (page - 1) * limit;
-  const paginatedItems = filtered.slice(start, start + limit);
-
-  return {
-    produces: paginatedItems,
-    pagination: {
-      total,
-      page,
-      limit,
-      totalPages,
-      hasMore: start + paginatedItems.length < total,
-    },
-  };
 }
 
 /**
