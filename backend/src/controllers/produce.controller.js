@@ -263,6 +263,20 @@ const getProduces = async (req, res, next) => {
       }
 
       where.status = normalizedStatus;
+    } else {
+      // Default filter for catalogue views: exclude OUT_OF_STOCK, ARCHIVED, and zero-quantity
+      where.AND = [
+        {
+          status: {
+            in: ['AVAILABLE', 'LOW_STOCK'],
+          },
+        },
+        {
+          quantity: {
+            gt: 0,
+          },
+        },
+      ];
     }
 
     // -------------------------
