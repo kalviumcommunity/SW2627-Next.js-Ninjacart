@@ -637,17 +637,22 @@ const updateProduce = async (req, res, next) => {
     }
 
     // -------------------------
-    // Status Logic
+    // Status Logic (BUG-009 Fix)
     // -------------------------
     if (quantityWasUpdated && status === undefined) {
-      if (updateData.quantity === 0) {
-        updateData.status = 'OUT_OF_STOCK';
-      } else {
-        updateData.status = 'AVAILABLE';
+      if (existing.status !== 'ARCHIVED') {
+        if (updateData.quantity === 0) {
+          updateData.status = 'OUT_OF_STOCK';
+        } else if (existing.status === 'OUT_OF_STOCK') {
+          // Restocking from 0 sets status back to AVAILABLE
+          updateData.status = 'AVAILABLE';
+        }
+        // If status was LOW_STOCK or AVAILABLE and quantity > 0, preserve existing status
       }
-    } else if (quantityWasUpdated && status !== undefined) {
-      // If they explicitly requested a status, respect it but validate against quantity
-      if (updateData.quantity === 0 && String(status).trim().toUpperCase() === 'AVAILABLE') {
+    } else if (status !== undefined) {
+      // If they explicitly requested a status, validate against target quantity
+      const targetQuantity = quantityWasUpdated ? updateData.quantity : existing.quantity;
+      if (targetQuantity === 0 && String(status).trim().toUpperCase() === 'AVAILABLE') {
         const error = new Error('Cannot set status to AVAILABLE when quantity is 0');
         error.statusCode = 400;
         return next(error);
