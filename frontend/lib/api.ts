@@ -105,7 +105,9 @@ interface OrderData {
   notes?: string;
 }
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const BACKEND_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000')
+  .replace(/\/+$/, '')
+  .replace(/\/api$/, '');
 
 // High-quality fallback dataset matching seed data for local preview & offline resilience
 export const SAMPLE_PRODUCES: Produce[] = [
