@@ -87,11 +87,16 @@ export interface ProduceQueryParams {
   farmerId?: string;
 }
 
-interface RegisterData {
+export interface RegisterData {
   name: string;
   email: string;
   password: string;
   role: string;
+}
+
+export interface LoginData {
+  email: string;
+  password: string;
 }
 
 interface OrderItemData {
@@ -571,4 +576,25 @@ export async function createOrder(orderData: OrderData) {
 
   const result = await response.json();
   return result.data;
+}
+
+/**
+ * User login handler
+ */
+export async function loginUser(credentials: LoginData) {
+  const response = await fetch(`${BACKEND_URL}/api/auth/login`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(credentials),
+  });
+
+  const result = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new Error(result?.error || result?.message || 'Invalid email or password');
+  }
+
+  return result;
 }
