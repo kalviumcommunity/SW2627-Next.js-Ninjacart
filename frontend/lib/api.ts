@@ -87,11 +87,16 @@ export interface ProduceQueryParams {
   farmerId?: string;
 }
 
-interface RegisterData {
+export interface RegisterData {
   name: string;
   email: string;
   password: string;
   role: string;
+}
+
+export interface LoginData {
+  email: string;
+  password: string;
 }
 
 interface OrderItemData {
@@ -490,7 +495,29 @@ export async function registerUser(data: RegisterData) {
   });
 
   if (!response.ok) {
-    throw new Error('Failed to register');
+    const errorResult = await response.json().catch(() => null);
+    throw new Error(errorResult?.error || 'Failed to register');
+  }
+
+  const result = await response.json();
+  return result;
+}
+
+/**
+ * User login handler
+ */
+export async function loginUser(data: LoginData) {
+  const response = await fetch(`${BACKEND_URL}/api/auth/login`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const errorResult = await response.json().catch(() => null);
+    throw new Error(errorResult?.error || 'Failed to log in');
   }
 
   const result = await response.json();
