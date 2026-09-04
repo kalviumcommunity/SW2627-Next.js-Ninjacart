@@ -598,4 +598,3 @@ export async function loginUser(credentials: LoginData) {
 
   return result;
 }
-
