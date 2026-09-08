@@ -9,11 +9,18 @@ import { loginUser } from "@/lib/api";
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const router = useRouter();
   const { login } = useAuth();
+
+  const handleQuickFill = (demoEmail: string, demoPass: string) => {
+    setEmail(demoEmail);
+    setPassword(demoPass);
+    setError("");
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,7 +72,7 @@ export default function LoginPage() {
       <div
         style={{
           width: "100%",
-          maxWidth: "440px",
+          maxWidth: "460px",
           backgroundColor: "#ffffff",
           borderRadius: "16px",
           padding: "2.5rem",
@@ -162,37 +169,58 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label
-              htmlFor="login-password"
-              style={{
-                display: "block",
-                fontSize: "0.875rem",
-                fontWeight: 600,
-                color: "#334155",
-                marginBottom: "0.5rem",
-              }}
-            >
-              Password
-            </label>
-            <input
-              id="login-password"
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              style={{
-                width: "100%",
-                padding: "0.75rem 1rem",
-                borderRadius: "8px",
-                border: "1px solid #cbd5e1",
-                fontSize: "0.95rem",
-                outline: "none",
-                transition: "border-color 0.2s ease",
-              }}
-              onFocus={(e) => (e.target.style.borderColor = "#10b981")}
-              onBlur={(e) => (e.target.style.borderColor = "#cbd5e1")}
-            />
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+              <label
+                htmlFor="login-password"
+                style={{
+                  fontSize: "0.875rem",
+                  fontWeight: 600,
+                  color: "#334155",
+                }}
+              >
+                Password
+              </label>
+            </div>
+            <div style={{ position: "relative" }}>
+              <input
+                id="login-password"
+                type={showPassword ? "text" : "password"}
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                style={{
+                  width: "100%",
+                  padding: "0.75rem 2.75rem 0.75rem 1rem",
+                  borderRadius: "8px",
+                  border: "1px solid #cbd5e1",
+                  fontSize: "0.95rem",
+                  outline: "none",
+                  transition: "border-color 0.2s ease",
+                }}
+                onFocus={(e) => (e.target.style.borderColor = "#10b981")}
+                onBlur={(e) => (e.target.style.borderColor = "#cbd5e1")}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                style={{
+                  position: "absolute",
+                  right: "0.75rem",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  fontSize: "1rem",
+                  color: "#64748b",
+                  padding: "0.25rem",
+                }}
+              >
+                {showPassword ? "👁️" : "🙈"}
+              </button>
+            </div>
           </div>
 
           <button
@@ -222,7 +250,48 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <div style={{ marginTop: "1.75rem", textAlign: "center", fontSize: "0.875rem", color: "#64748b" }}>
+        {/* Demo Accounts Quick-Fill helper */}
+        <div style={{ marginTop: "1.5rem", padding: "1rem", backgroundColor: "#f8fafc", borderRadius: "8px", border: "1px dashed #cbd5e1" }}>
+          <p style={{ fontSize: "0.75rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "0.5rem" }}>
+            Demo Test Accounts
+          </p>
+          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+            <button
+              type="button"
+              onClick={() => handleQuickFill("ramesh.farmer@ninjacart.com", "Password@123")}
+              style={{
+                fontSize: "0.75rem",
+                padding: "0.35rem 0.65rem",
+                backgroundColor: "#ffffff",
+                border: "1px solid #e2e8f0",
+                borderRadius: "6px",
+                cursor: "pointer",
+                color: "#059669",
+                fontWeight: 600,
+              }}
+            >
+              👨‍🌾 Farmer Demo
+            </button>
+            <button
+              type="button"
+              onClick={() => handleQuickFill("freshmart.retailer@ninjacart.com", "Password@123")}
+              style={{
+                fontSize: "0.75rem",
+                padding: "0.35rem 0.65rem",
+                backgroundColor: "#ffffff",
+                border: "1px solid #e2e8f0",
+                borderRadius: "6px",
+                cursor: "pointer",
+                color: "#2563eb",
+                fontWeight: 600,
+              }}
+            >
+              🏪 Retailer Demo
+            </button>
+          </div>
+        </div>
+
+        <div style={{ marginTop: "1.5rem", textAlign: "center", fontSize: "0.875rem", color: "#64748b" }}>
           Don&apos;t have an account?{" "}
           <Link href="/register" style={{ color: "#10b981", fontWeight: 600 }}>
             Create one
