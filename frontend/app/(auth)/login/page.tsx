@@ -35,7 +35,7 @@ export default function LoginPage() {
     try {
       const response = await loginUser({
         email: email.trim(),
-        password,
+        password: password.trim(),
       });
 
       if (response && response.data) {
@@ -76,7 +76,11 @@ export default function LoginPage() {
           <p className="subtitle">Sign in to your Ninjacart account</p>
           
           {error && (
-            <div style={{ backgroundColor: 'var(--danger-light)', color: 'var(--danger)', padding: '0.875rem', borderRadius: 'var(--radius-md)', marginBottom: '1.5rem', fontSize: '0.875rem', fontWeight: 500 }}>
+            <div 
+              role="alert"
+              aria-live="assertive"
+              style={{ backgroundColor: 'var(--danger-light)', color: 'var(--danger)', padding: '0.875rem', borderRadius: 'var(--radius-md)', marginBottom: '1.5rem', fontSize: '0.875rem', fontWeight: 600 }}
+            >
               {error}
             </div>
           )}
