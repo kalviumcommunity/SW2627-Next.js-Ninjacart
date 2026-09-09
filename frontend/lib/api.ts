@@ -419,41 +419,27 @@ export async function getProduceById(id: string): Promise<Produce | null> {
  * Create produce listing (Farmer action)
  */
 export async function createProduct(product: CreateProductData): Promise<any> {
-  try {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-    const res = await fetch(`${BACKEND_URL}/api/produce`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify(product),
-    });
-
-    if (res.ok) {
-      const data = await res.json();
-      return data.data;
-    }
-  } catch {
-    // Fallback simulation
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  if (!token) {
+    throw new Error('Authentication required. Please sign in as a farmer to list produce.');
   }
 
-  const created: Produce = {
-    id: `prod-${Date.now()}`,
-    name: product.name || 'New Produce',
-    description: ('description' in product && product.description) ? product.description : '',
-    category: (product.category ? (product.category.toUpperCase() as ProduceCategory) : 'VEGETABLES'),
-    price: product.price || 0,
-    unit: ('unit' in product && product.unit) ? product.unit : 'kg',
-    quantity: product.quantity || 0,
-    minOrderQuantity: ('minOrderQuantity' in product && product.minOrderQuantity) ? product.minOrderQuantity : 1,
-    imageUrl: ('imageUrl' in product && product.imageUrl) ? product.imageUrl : null,
-    status: product.quantity && product.quantity > 0 ? 'AVAILABLE' : 'OUT_OF_STOCK',
-    farmerId: 'farmer-001',
-    createdAt: new Date().toISOString(),
-  };
+  const res = await fetch(`${BACKEND_URL}/api/produce`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(product),
+  });
 
-  return created;
+  const data = await res.json().catch(() => null);
+
+  if (!res.ok) {
+    throw new Error(data?.error || data?.message || 'Failed to publish produce');
+  }
+
+  return data.data;
 }
 
 /**
@@ -494,33 +480,12 @@ export async function registerUser(data: RegisterData) {
     body: JSON.stringify(data),
   });
 
-  if (!response.ok) {
-    const errorResult = await response.json().catch(() => null);
-    throw new Error(errorResult?.error || 'Failed to register');
-  }
-
-  const result = await response.json();
-  return result;
-}
-
-/**
- * User login handler
- */
-export async function loginUser(data: LoginData) {
-  const response = await fetch(`${BACKEND_URL}/api/auth/login`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(data),
-  });
+  const result = await response.json().catch(() => null);
 
   if (!response.ok) {
-    const errorResult = await response.json().catch(() => null);
-    throw new Error(errorResult?.error || 'Failed to log in');
+    throw new Error(result?.error || result?.message || 'Failed to register');
   }
 
-  const result = await response.json();
   return result;
 }
 
@@ -546,4 +511,25 @@ export async function createOrder(orderData: OrderData) {
 
   const result = await response.json();
   return result.data;
+}
+
+/**
+ * User login handler
+ */
+export async function loginUser(credentials: LoginData) {
+  const response = await fetch(`${BACKEND_URL}/api/auth/login`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(credentials),
+  });
+
+  const result = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new Error(result?.error || result?.message || 'Invalid email or password');
+  }
+
+  return result;
 }

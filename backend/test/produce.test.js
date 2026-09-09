@@ -66,7 +66,7 @@ async function runProduceTests() {
 
   try {
     server = http.createServer(app);
-    await new Promise((resolve) => server.listen(0, resolve));
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
     const port = server.address().port;
     baseUrl = `http://localhost:${port}`;
     recordTest('1. Express server starts successfully', true, `Listening on port ${port}`);
@@ -200,6 +200,30 @@ async function runProduceTests() {
     const updateRetailerValid = updateRetailerRes.status === 403;
     recordTest('11. Update Produce fails for Retailer (403 Forbidden)', updateRetailerValid, JSON.stringify(updateRetailerRes.body));
 
+    // 10. BUG-009: Updating quantity on ARCHIVED produce preserves ARCHIVED status
+    await request('PATCH', `/api/produce/${produceId}`, { status: 'ARCHIVED' }, {
+      Authorization: `Bearer ${farmerToken}`
+    });
+    const updateArchivedQtyRes = await request('PATCH', `/api/produce/${produceId}`, { quantity: 50 }, {
+      Authorization: `Bearer ${farmerToken}`
+    });
+    const archivedPreserved = updateArchivedQtyRes.status === 200 &&
+      updateArchivedQtyRes.body.data.status === 'ARCHIVED' &&
+      updateArchivedQtyRes.body.data.quantity === 50;
+    recordTest('12. BUG-009: Quantity update on ARCHIVED produce preserves ARCHIVED status', archivedPreserved, JSON.stringify(updateArchivedQtyRes.body));
+
+    // 11. BUG-009: Updating quantity on LOW_STOCK produce preserves LOW_STOCK status
+    await request('PATCH', `/api/produce/${produceId}`, { status: 'LOW_STOCK', quantity: 5 }, {
+      Authorization: `Bearer ${farmerToken}`
+    });
+    const updateLowStockQtyRes = await request('PATCH', `/api/produce/${produceId}`, { quantity: 8 }, {
+      Authorization: `Bearer ${farmerToken}`
+    });
+    const lowStockPreserved = updateLowStockQtyRes.status === 200 &&
+      updateLowStockQtyRes.body.data.status === 'LOW_STOCK' &&
+      updateLowStockQtyRes.body.data.quantity === 8;
+    recordTest('13. BUG-009: Quantity update on LOW_STOCK produce preserves LOW_STOCK status', lowStockPreserved, JSON.stringify(updateLowStockQtyRes.body));
+
     console.log('\n======================================================');
     const total = results.length;
     const passed = results.filter((r) => r.passed).length;
@@ -207,7 +231,7 @@ async function runProduceTests() {
     console.log(`📊 Summary: Total: ${total} | Passed: ${passed} | Failed: ${failed}`);
     console.log('======================================================\n');
 
-    if (failed > 0) {
+    if (failed === 0) { process.exit(0); } else {
       process.exit(1);
     }
   } catch (error) {

@@ -1,6 +1,16 @@
 const path = require('path');
+const fs = require('fs');
+
 // Load environment variables from .env
-require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
+const envPath = path.join(__dirname, '..', '.env');
+if (!fs.existsSync(envPath)) {
+  console.warn('\n⚠️  [WARN] backend/.env file not found.');
+  console.warn('ℹ️  Please create backend/.env by copying backend/.env.example:');
+  console.warn('   cp backend/.env.example backend/.env');
+  console.warn('   And configure your DATABASE_URL and JWT_SECRET.\n');
+}
+
+require('dotenv').config({ path: envPath });
 
 const app = require('./app');
 const prisma = require('./config/db');
@@ -12,6 +22,17 @@ const server = app.listen(PORT, async () => {
   console.log(`🚀 Ninjacart Backend Server running on port ${PORT}`);
   console.log(`📡 Health Check: http://localhost:${PORT}/api/health`);
   console.log(`=========================================`);
+
+  // Verify PostgreSQL connectivity on startup
+  try {
+    await prisma.$connect();
+    console.log('✅ PostgreSQL Database connected successfully via Prisma.');
+  } catch (dbError) {
+    console.warn('\n⚠️  [DATABASE WARNING] Could not connect to PostgreSQL database.');
+    console.warn(`ℹ️  Ensure your DATABASE_URL in backend/.env is set properly:`);
+    console.warn(`   DATABASE_URL="postgresql://[user]:[password]@[host]:5432/[db]?schema=public"`);
+    console.warn(`   Error Details: ${dbError.message}\n`);
+  }
 });
 
 // Handle graceful shutdown

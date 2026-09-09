@@ -24,7 +24,6 @@ const authenticate = (req, res, next) => {
 
   const token = parts[1].trim();
 
-  // Explicitly check JWT_SECRET without fallback
   const jwtSecret = process.env.JWT_SECRET;
   if (!jwtSecret) {
     console.error('FATAL: JWT_SECRET environment variable is not configured.');

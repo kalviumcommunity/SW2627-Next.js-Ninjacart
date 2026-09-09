@@ -1,10 +1,12 @@
 'use client';
 
-import React, { useState, useEffect, useTransition } from 'react';
+import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import ProductCard from '../../components/ProductCard';
 import Pagination from '../../components/Pagination';
 import OrderModal from '../../components/OrderModal';
-import { getProduces, Produce, ProduceCategory } from '../../lib/api';
+import { getProduces, Produce } from '../../lib/api';
+import { useAuth } from '../../context/AuthContext';
 
 const CATEGORIES: { label: string; value: string; icon: string }[] = [
   { label: 'All Produce', value: 'ALL', icon: '🧺' },
@@ -17,6 +19,9 @@ const CATEGORIES: { label: string; value: string; icon: string }[] = [
 ];
 
 export default function RetailerCataloguePage() {
+  const { role, user } = useAuth();
+  const isFarmer = (role || user?.role) === 'FARMER';
+
   const [produces, setProduces] = useState<Produce[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -32,8 +37,6 @@ export default function RetailerCataloguePage() {
   // Selected produce for quick order modal
   const [selectedProduce, setSelectedProduce] = useState<Produce | null>(null);
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
-
-  const [, startTransition] = useTransition();
 
   const loadProduces = async (
     page: number,
@@ -56,7 +59,8 @@ export default function RetailerCataloguePage() {
         order: sortOrder,
       });
 
-      setProduces(res.produces.filter((produce) => produce.status !== 'OUT_OF_STOCK' && produce.status !== 'ARCHIVED' && produce.quantity > 0));
+      // The API applies availability filters before pagination, keeping page counts accurate.
+      setProduces(res.produces);
       setTotalPages(res.pagination.totalPages);
       setTotalCount(res.pagination.total);
       setCurrentPage(res.pagination.page);
@@ -92,12 +96,59 @@ export default function RetailerCataloguePage() {
   };
 
   const handleQuickOrder = (prod: Produce) => {
+    if (isFarmer) return;
     setSelectedProduce(prod);
     setIsOrderModalOpen(true);
   };
 
   return (
     <div className="main-content">
+      {/* Farmer Role Notice */}
+      {isFarmer && (
+        <div
+          style={{
+            backgroundColor: '#f0fdf4',
+            border: '1px solid #bbf7d0',
+            borderRadius: '14px',
+            padding: '1rem 1.25rem',
+            marginBottom: '1.5rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '1rem',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+            <span style={{ fontSize: '1.4rem' }}>👨‍🌾</span>
+            <div>
+              <strong style={{ color: '#166534', fontSize: '0.95rem', display: 'block' }}>
+                Farmer Market View
+              </strong>
+              <span style={{ color: '#15803d', fontSize: '0.85rem' }}>
+                You are signed in as a verified farmer. You can monitor live market rates and listings. Retailer wholesale ordering is restricted to retailer accounts.
+              </span>
+            </div>
+          </div>
+          <Link
+            href="/farmer/dashboard"
+            style={{
+              padding: '0.5rem 1rem',
+              backgroundColor: '#10b981',
+              color: '#ffffff',
+              borderRadius: '8px',
+              fontSize: '0.85rem',
+              fontWeight: 700,
+              textDecoration: 'none',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Manage My Produce →
+          </Link>
+        </div>
+      )}
+
       {errorMessage && (
         <div
           role="alert"
@@ -487,12 +538,11 @@ export default function RetailerCataloguePage() {
           </div>
         ) : (
           /* Product Grid */
-      <div className="catalogue-grid"> 
-     {produces.map((produce) => ( 
-      <ProductCard key={produce.id} produce={produce} onOrderClick={handleQuickOrder} /> 
-       ))} 
-      </div>
-
+          <div className="catalogue-grid">
+            {produces.map((produce) => (
+              <ProductCard key={produce.id} produce={produce} onOrderClick={handleQuickOrder} />
+            ))}
+          </div>
         )}
 
         {/* Pagination Bar */}
@@ -505,15 +555,17 @@ export default function RetailerCataloguePage() {
         )}
       </section>
 
-      {/* Order Modal */}
-      <OrderModal
-        produce={selectedProduce}
-        isOpen={isOrderModalOpen}
-        onClose={() => {
-          setIsOrderModalOpen(false);
-          setSelectedProduce(null);
-        }}
-      />
+      {/* Order Modal (Retailers only) */}
+      {!isFarmer && (
+        <OrderModal
+          produce={selectedProduce}
+          isOpen={isOrderModalOpen}
+          onClose={() => {
+            setIsOrderModalOpen(false);
+            setSelectedProduce(null);
+          }}
+        />
+      )}
     </div>
   );
 }
