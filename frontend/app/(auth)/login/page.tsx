@@ -9,10 +9,10 @@ import { loginUser } from "@/lib/api";
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-
+  const [showPassword, setShowPassword] = useState(false);
+  
   const router = useRouter();
   const { login } = useAuth();
 
@@ -35,7 +35,7 @@ export default function LoginPage() {
     try {
       const response = await loginUser({
         email: email.trim(),
-        password,
+        password: password.trim(),
       });
 
       if (response && response.data) {
@@ -59,243 +59,134 @@ export default function LoginPage() {
   };
 
   return (
-    <div
-      style={{
-        minHeight: "calc(100vh - 80px)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "2rem 1.5rem",
-        backgroundColor: "#f8fafc",
-      }}
-    >
-      <div
-        style={{
-          width: "100%",
-          maxWidth: "460px",
-          backgroundColor: "#ffffff",
-          borderRadius: "16px",
-          padding: "2.5rem",
-          boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05)",
-          border: "1px solid #e2e8f0",
-        }}
+    <div className="auth-container animate-fade-in">
+      <div 
+        className="auth-sidebar" 
+        style={{ backgroundImage: "url('https://images.unsplash.com/photo-1542838132-92c53300491e?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80')" }}
       >
-        <div style={{ textAlign: "center", marginBottom: "2rem" }}>
-          <div
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: "48px",
-              height: "48px",
-              borderRadius: "12px",
-              backgroundColor: "#ecfdf5",
-              color: "#10b981",
-              fontSize: "1.5rem",
-              marginBottom: "1rem",
-            }}
-          >
-            🌱
-          </div>
-          <h1
-            style={{
-              fontSize: "1.75rem",
-              fontWeight: 800,
-              color: "#0f172a",
-              letterSpacing: "-0.02em",
-              marginBottom: "0.5rem",
-            }}
-          >
-            Welcome back
-          </h1>
-          <p style={{ color: "#64748b", fontSize: "0.95rem" }}>
-            Sign in to access produce orders, listings & logistics
-          </p>
+        <div className="auth-sidebar-content">
+          <h1>Farm fresh produce, directly to your retail store.</h1>
+          <p>Join the Ninjacart network to experience the most transparent and efficient agricultural supply chain.</p>
         </div>
-
-        {error && (
-          <div
-            style={{
-              backgroundColor: "#fef2f2",
-              border: "1px solid #fecaca",
-              color: "#dc2626",
-              padding: "0.75rem 1rem",
-              borderRadius: "8px",
-              fontSize: "0.875rem",
-              marginBottom: "1.5rem",
-              display: "flex",
-              alignItems: "center",
-              gap: "0.5rem",
-            }}
-          >
-            <span>⚠️</span>
-            <span>{error}</span>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-          <div>
-            <label
-              htmlFor="login-email"
-              style={{
-                display: "block",
-                fontSize: "0.875rem",
-                fontWeight: 600,
-                color: "#334155",
-                marginBottom: "0.5rem",
-              }}
+      </div>
+      
+      <div className="auth-form-wrapper">
+        <div className="auth-form-card">
+          <h2>Welcome Back</h2>
+          <p className="subtitle">Sign in to your Ninjacart account</p>
+          
+          {error && (
+            <div 
+              role="alert"
+              aria-live="assertive"
+              style={{ backgroundColor: 'var(--danger-light)', color: 'var(--danger)', padding: '0.875rem', borderRadius: 'var(--radius-md)', marginBottom: '1.5rem', fontSize: '0.875rem', fontWeight: 600 }}
             >
-              Email address
-            </label>
-            <input
-              id="login-email"
-              type="email"
-              placeholder="name@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              style={{
-                width: "100%",
-                padding: "0.75rem 1rem",
-                borderRadius: "8px",
-                border: "1px solid #cbd5e1",
-                fontSize: "0.95rem",
-                outline: "none",
-                transition: "border-color 0.2s ease",
-              }}
-              onFocus={(e) => (e.target.style.borderColor = "#10b981")}
-              onBlur={(e) => (e.target.style.borderColor = "#cbd5e1")}
-            />
-          </div>
-
-          <div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
-              <label
-                htmlFor="login-password"
-                style={{
-                  fontSize: "0.875rem",
-                  fontWeight: 600,
-                  color: "#334155",
-                }}
-              >
-                Password
-              </label>
+              {error}
             </div>
-            <div style={{ position: "relative" }}>
+          )}
+
+          <form onSubmit={handleSubmit}>
+            <div className="input-group">
+              <label htmlFor="email" className="input-label">Email Address</label>
               <input
-                id="login-password"
-                type={showPassword ? "text" : "password"}
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                id="email"
+                type="email"
                 required
-                style={{
-                  width: "100%",
-                  padding: "0.75rem 2.75rem 0.75rem 1rem",
-                  borderRadius: "8px",
-                  border: "1px solid #cbd5e1",
-                  fontSize: "0.95rem",
-                  outline: "none",
-                  transition: "border-color 0.2s ease",
-                }}
-                onFocus={(e) => (e.target.style.borderColor = "#10b981")}
-                onBlur={(e) => (e.target.style.borderColor = "#cbd5e1")}
+                placeholder="Enter your email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="input-field"
               />
+            </div>
+            
+            <div className="input-group" style={{ marginBottom: '2rem' }}>
+              <label htmlFor="password" className="input-label">Password</label>
+              <div style={{ position: "relative" }}>
+                <input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  required
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="input-field"
+                  style={{ width: "100%" }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  style={{
+                    position: "absolute",
+                    right: "0.75rem",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    fontSize: "1rem",
+                    color: "#64748b",
+                    padding: "0.25rem",
+                  }}
+                >
+                  {showPassword ? "👁️" : "🙈"}
+                </button>
+              </div>
+            </div>
+            
+            <button 
+              type="submit" 
+              disabled={isLoading}
+              className="btn btn-primary"
+            >
+              {isLoading ? 'Signing in...' : 'Sign In to Dashboard'}
+            </button>
+          </form>
+
+          {/* Demo Accounts Quick-Fill helper */}
+          <div style={{ marginTop: "1.5rem", padding: "1rem", backgroundColor: "#f8fafc", borderRadius: "8px", border: "1px dashed #cbd5e1" }}>
+            <p style={{ fontSize: "0.75rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "0.5rem" }}>
+              Demo Test Accounts
+            </p>
+            <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
               <button
                 type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                aria-label={showPassword ? "Hide password" : "Show password"}
+                onClick={() => handleQuickFill("ramesh.farmer@ninjacart.com", "Password@123")}
                 style={{
-                  position: "absolute",
-                  right: "0.75rem",
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  background: "none",
-                  border: "none",
+                  fontSize: "0.75rem",
+                  padding: "0.35rem 0.65rem",
+                  backgroundColor: "#ffffff",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: "6px",
                   cursor: "pointer",
-                  fontSize: "1rem",
-                  color: "#64748b",
-                  padding: "0.25rem",
+                  color: "#059669",
+                  fontWeight: 600,
                 }}
               >
-                {showPassword ? "👁️" : "🙈"}
+                👨‍🌾 Farmer Demo
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickFill("freshmart.retailer@ninjacart.com", "Password@123")}
+                style={{
+                  fontSize: "0.75rem",
+                  padding: "0.35rem 0.65rem",
+                  backgroundColor: "#ffffff",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: "6px",
+                  cursor: "pointer",
+                  color: "#2563eb",
+                  fontWeight: 600,
+                }}
+              >
+                🏪 Retailer Demo
               </button>
             </div>
           </div>
-
-          <button
-            type="submit"
-            id="login-submit-btn"
-            disabled={isLoading}
-            style={{
-              marginTop: "0.5rem",
-              padding: "0.85rem 1.5rem",
-              backgroundColor: isLoading ? "#94a3b8" : "#10b981",
-              color: "#ffffff",
-              borderRadius: "8px",
-              fontWeight: 700,
-              fontSize: "1rem",
-              cursor: isLoading ? "not-allowed" : "pointer",
-              transition: "background-color 0.2s ease",
-              boxShadow: "0 2px 4px rgba(16, 185, 129, 0.2)",
-            }}
-            onMouseEnter={(e) => {
-              if (!isLoading) e.currentTarget.style.backgroundColor = "#059669";
-            }}
-            onMouseLeave={(e) => {
-              if (!isLoading) e.currentTarget.style.backgroundColor = "#10b981";
-            }}
-          >
-            {isLoading ? "Signing in..." : "Sign In"}
-          </button>
-        </form>
-
-        {/* Demo Accounts Quick-Fill helper */}
-        <div style={{ marginTop: "1.5rem", padding: "1rem", backgroundColor: "#f8fafc", borderRadius: "8px", border: "1px dashed #cbd5e1" }}>
-          <p style={{ fontSize: "0.75rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "0.5rem" }}>
-            Demo Test Accounts
+          
+          <p style={{ marginTop: '2rem', textAlign: 'center', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+            Don't have an account? <Link href="/register" style={{ color: 'var(--primary)', fontWeight: 600 }}>Create an account</Link>
           </p>
-          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-            <button
-              type="button"
-              onClick={() => handleQuickFill("ramesh.farmer@ninjacart.com", "Password@123")}
-              style={{
-                fontSize: "0.75rem",
-                padding: "0.35rem 0.65rem",
-                backgroundColor: "#ffffff",
-                border: "1px solid #e2e8f0",
-                borderRadius: "6px",
-                cursor: "pointer",
-                color: "#059669",
-                fontWeight: 600,
-              }}
-            >
-              👨‍🌾 Farmer Demo
-            </button>
-            <button
-              type="button"
-              onClick={() => handleQuickFill("freshmart.retailer@ninjacart.com", "Password@123")}
-              style={{
-                fontSize: "0.75rem",
-                padding: "0.35rem 0.65rem",
-                backgroundColor: "#ffffff",
-                border: "1px solid #e2e8f0",
-                borderRadius: "6px",
-                cursor: "pointer",
-                color: "#2563eb",
-                fontWeight: 600,
-              }}
-            >
-              🏪 Retailer Demo
-            </button>
-          </div>
-        </div>
-
-        <div style={{ marginTop: "1.5rem", textAlign: "center", fontSize: "0.875rem", color: "#64748b" }}>
-          Don&apos;t have an account?{" "}
-          <Link href="/register" style={{ color: "#10b981", fontWeight: 600 }}>
-            Create one
-          </Link>
         </div>
       </div>
     </div>

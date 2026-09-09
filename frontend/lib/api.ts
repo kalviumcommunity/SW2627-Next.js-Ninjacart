@@ -542,6 +542,27 @@ export async function registerUser(data: RegisterData) {
 }
 
 /**
+ * User login handler
+ */
+export async function loginUser(credentials: LoginData) {
+  const response = await fetch(`${BACKEND_URL}/api/auth/login`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(credentials),
+  });
+
+  const result = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new Error(result?.error || result?.message || 'Invalid email or password');
+  }
+
+  return result;
+}
+
+/**
  * Create a new order (Task #20)
  */
 export async function createOrder(orderData: OrderData) {
@@ -566,22 +587,23 @@ export async function createOrder(orderData: OrderData) {
 }
 
 /**
- * User login handler
+ * Fetch orders
  */
-export async function loginUser(credentials: LoginData) {
-  const response = await fetch(`${BACKEND_URL}/api/auth/login`, {
-    method: 'POST',
+export async function getOrders() {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+
+  const response = await fetch(`${BACKEND_URL}/api/orders`, {
     headers: {
-      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    body: JSON.stringify(credentials),
+    cache: 'no-store'
   });
 
-  const result = await response.json().catch(() => null);
-
   if (!response.ok) {
-    throw new Error(result?.error || result?.message || 'Invalid email or password');
+    const errorResult = await response.json().catch(() => null);
+    throw new Error(errorResult?.error || 'Failed to fetch orders');
   }
 
-  return result;
+  const result = await response.json();
+  return result.data;
 }
