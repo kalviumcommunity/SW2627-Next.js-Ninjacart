@@ -63,7 +63,7 @@ async function runTests() {
   try {
     // Start temporary test server
     const testPort = 5055;
-    server = app.listen(testPort);
+    server = app.listen(testPort, '127.0.0.1');
     baseUrl = `http://localhost:${testPort}`;
 
     // 1. Health check
@@ -164,14 +164,14 @@ async function runTests() {
     );
 
     // 9. Update produce item
-    const updateRes = await request('PUT', `/api/produce/${createdProduceId}`, {
+    const updateRes = await request('PATCH', `/api/produce/${createdProduceId}`, {
       price: 49.99,
       quantity: 120,
       status: 'AVAILABLE',
     }, {
       Authorization: `Bearer ${farmerToken}`,
     });
-    recordTest('9. Farmer PUT /api/produce/:id updates price and quantity', 
+    recordTest('9. Farmer PATCH /api/produce/:id updates price and quantity', 
       updateRes.status === 200 && 
       updateRes.body.data?.price === 49.99 &&
       updateRes.body.data?.quantity === 120
@@ -205,7 +205,7 @@ async function runTests() {
       // ignore cleanup error
     }
 
-    if (failed > 0) {
+    if (failed === 0) { process.exit(0); } else {
       process.exit(1);
     }
   } catch (error) {
