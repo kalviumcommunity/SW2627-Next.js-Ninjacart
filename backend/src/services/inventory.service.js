@@ -49,12 +49,21 @@ class InventoryService {
           throw error;
         }
 
+        if (quantity < produce.minOrderQuantity) {
+          const error = new Error(
+            `Quantity below minimum order quantity for "${produce.name}". Minimum: ${produce.minOrderQuantity}, Requested: ${quantity}`
+          );
+          error.statusCode = 400;
+          error.code = 'BELOW_MIN_ORDER_QUANTITY';
+          throw error;
+        }
+
         // Check if sufficient stock is available
         if (produce.quantity < quantity) {
           const error = new Error(
             `Insufficient stock for "${produce.name}". Available: ${produce.quantity}, Requested: ${quantity}`
           );
-          error.statusCode = 400;
+          error.statusCode = 409;
           error.code = 'INSUFFICIENT_STOCK';
           throw error;
         }
