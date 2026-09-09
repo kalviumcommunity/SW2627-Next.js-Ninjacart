@@ -164,7 +164,7 @@ async function runTests() {
     );
 
     // 9. Update produce item
-    const updateRes = await request('PUT', `/api/produce/${createdProduceId}`, {
+    const updateRes = await request('PATCH', `/api/produce/${createdProduceId}`, {
       price: 49.99,
       quantity: 120,
       status: 'AVAILABLE',
