@@ -87,11 +87,16 @@ export interface ProduceQueryParams {
   farmerId?: string;
 }
 
-interface RegisterData {
+export interface RegisterData {
   name: string;
   email: string;
   password: string;
   role: string;
+}
+
+export interface LoginData {
+  email: string;
+  password: string;
 }
 
 interface OrderItemData {
@@ -320,7 +325,7 @@ export const SAMPLE_PRODUCES: Produce[] = [
 ];
 
 /**
- * Fetch paginated produce listings from backend with fallback support
+ * Fetch paginated produce listings from the live catalogue endpoint.
  */
 export async function getProduces(params: ProduceQueryParams = {}): Promise<PaginatedProducesResponse> {
   const {
@@ -354,9 +359,16 @@ export async function getProduces(params: ProduceQueryParams = {}): Promise<Pagi
       if (data.success && data.data) {
         return data.data;
       }
+      throw new Error(data.error || 'Invalid catalogue response');
     }
-  } catch {
-    // Backend unreachable — gracefully fallback to client-side filtered data
+    const errorResult = await res.json().catch(() => null);
+    throw new Error(errorResult?.error || 'Failed to fetch catalogue');
+  } catch (error) {
+    if (error instanceof TypeError) {
+      // Backend unreachable — gracefully fallback to client-side filtered data
+    } else {
+      throw error;
+    }
   }
 
   // Client-side filtering fallback
@@ -412,7 +424,7 @@ export async function getProduces(params: ProduceQueryParams = {}): Promise<Pagi
 }
 
 /**
- * Fetch a single produce item by its ID (Task #20)
+ * Fetch a single produce item by its ID from the live catalogue endpoint.
  */
 export async function getProduce(id: string): Promise<Produce> {
   try {
@@ -425,9 +437,15 @@ export async function getProduce(id: string): Promise<Produce> {
       if (data.success && data.data) {
         return data.data;
       }
+      throw new Error(data.error || 'Invalid catalogue response');
     }
-  } catch {
-    // Backend fallback
+    const errorResult = await res.json().catch(() => null);
+    throw new Error(errorResult?.error || 'Failed to fetch product');
+  } catch (error) {
+    if (!(error instanceof TypeError)) {
+      throw error;
+    }
+    // Backend unreachable — gracefully fallback to the local catalogue
   }
 
   const found = SAMPLE_PRODUCES.find((p) => p.id === id);
@@ -453,41 +471,27 @@ export async function getProduceById(id: string): Promise<Produce | null> {
  * Create produce listing (Farmer action)
  */
 export async function createProduct(product: CreateProductData): Promise<any> {
-  try {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-    const res = await fetch(`${BACKEND_URL}/api/produce`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify(product),
-    });
-
-    if (res.ok) {
-      const data = await res.json();
-      return data.data;
-    }
-  } catch {
-    // Fallback simulation
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  if (!token) {
+    throw new Error('Authentication required. Please sign in as a farmer to list produce.');
   }
 
-  const created: Produce = {
-    id: `prod-${Date.now()}`,
-    name: product.name || 'New Produce',
-    description: ('description' in product && product.description) ? product.description : '',
-    category: (product.category ? (product.category.toUpperCase() as ProduceCategory) : 'VEGETABLES'),
-    price: product.price || 0,
-    unit: ('unit' in product && product.unit) ? product.unit : 'kg',
-    quantity: product.quantity || 0,
-    minOrderQuantity: ('minOrderQuantity' in product && product.minOrderQuantity) ? product.minOrderQuantity : 1,
-    imageUrl: ('imageUrl' in product && product.imageUrl) ? product.imageUrl : null,
-    status: product.quantity && product.quantity > 0 ? 'AVAILABLE' : 'OUT_OF_STOCK',
-    farmerId: 'farmer-001',
-    createdAt: new Date().toISOString(),
-  };
+  const res = await fetch(`${BACKEND_URL}/api/produce`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(product),
+  });
 
-  return created;
+  const data = await res.json().catch(() => null);
+
+  if (!res.ok) {
+    throw new Error(data?.error || data?.message || 'Failed to publish produce');
+  }
+
+  return data.data;
 }
 
 /**
@@ -528,11 +532,12 @@ export async function registerUser(data: RegisterData) {
     body: JSON.stringify(data),
   });
 
+  const result = await response.json().catch(() => null);
+
   if (!response.ok) {
-    throw new Error('Failed to register');
+    throw new Error(result?.error || result?.message || 'Failed to register');
   }
 
-  const result = await response.json();
   return result;
 }
 
@@ -558,4 +563,25 @@ export async function createOrder(orderData: OrderData) {
 
   const result = await response.json();
   return result.data;
+}
+
+/**
+ * User login handler
+ */
+export async function loginUser(credentials: LoginData) {
+  const response = await fetch(`${BACKEND_URL}/api/auth/login`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(credentials),
+  });
+
+  const result = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new Error(result?.error || result?.message || 'Invalid email or password');
+  }
+
+  return result;
 }
