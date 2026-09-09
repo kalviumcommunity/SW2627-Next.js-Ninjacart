@@ -16,7 +16,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const [imgError, setImgError] = useState(false);
 
   const isAvailable =
-    produce.status === "AVAILABLE" && produce.quantity > 0;
+    (produce.status === "AVAILABLE" || produce.status === "LOW_STOCK") &&
+    produce.quantity > 0;
 
   const isLowStock =
     produce.status === "LOW_STOCK" ||

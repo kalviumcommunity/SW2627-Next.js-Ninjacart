@@ -637,26 +637,30 @@ const updateProduce = async (req, res, next) => {
     }
 
     // -------------------------
-    // Status Logic
+    // Status Logic (BUG-009 Fix)
     // -------------------------
     if (quantityWasUpdated && status === undefined) {
-      if (updateData.quantity === 0) {
-        updateData.status = 'OUT_OF_STOCK';
-      } else if (existing.status === 'OUT_OF_STOCK') {
-        updateData.status = 'AVAILABLE';
+      if (existing.status !== 'ARCHIVED') {
+        if (updateData.quantity === 0) {
+          updateData.status = 'OUT_OF_STOCK';
+        } else if (existing.status === 'OUT_OF_STOCK') {
+          // Restocking from 0 sets status back to AVAILABLE
+          updateData.status = 'AVAILABLE';
+        }
+        // If status was LOW_STOCK or AVAILABLE and quantity > 0, preserve existing status
       }
     } else if (status !== undefined) {
-      // If they explicitly requested a status, respect it but validate against quantity
+      // If they explicitly requested a status, respect it but validate against target quantity
       const newStatus = String(status).trim().toUpperCase();
-      const currentQuantity = updateData.quantity !== undefined ? updateData.quantity : existing.quantity;
+      const targetQuantity = quantityWasUpdated ? updateData.quantity : existing.quantity;
 
-      if (currentQuantity === 0 && newStatus === 'AVAILABLE') {
+      if (targetQuantity === 0 && newStatus === 'AVAILABLE') {
         const error = new Error('Cannot set status to AVAILABLE when quantity is 0');
         error.statusCode = 400;
         return next(error);
       }
       
-      if (currentQuantity > 0 && newStatus === 'ARCHIVED') {
+      if (targetQuantity > 0 && newStatus === 'ARCHIVED') {
         const error = new Error('Cannot set status to ARCHIVED when quantity is greater than 0');
         error.statusCode = 400;
         return next(error);

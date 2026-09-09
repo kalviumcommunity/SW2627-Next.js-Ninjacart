@@ -119,7 +119,28 @@ async function seed() {
     }
 
     // ==========================================
-    // 3. Seed Diverse Sample Produce Items
+    // 3. Seed Sample Admin
+    // ==========================================
+    const existingAdmin = await prisma.user.findUnique({
+      where: { email: 'admin@ninjacart.com' },
+    });
+
+    if (!existingAdmin) {
+      await prisma.user.create({
+        data: {
+          name: 'Platform Admin',
+          email: 'admin@ninjacart.com',
+          password: hashedPassword,
+          role: 'ADMIN',
+        },
+      });
+      console.log('✅ Created Admin: Platform Admin (admin@ninjacart.com)');
+    } else {
+      console.log('ℹ️ Admin exists: admin@ninjacart.com');
+    }
+
+    // ==========================================
+    // 4. Seed Diverse Sample Produce Items
     // ==========================================
     const sampleProduces = [
       {
