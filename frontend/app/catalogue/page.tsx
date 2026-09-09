@@ -455,9 +455,9 @@ export default function RetailerCataloguePage() {
         ) : (
           /* Product Grid */
       <div className="catalogue-grid"> 
-     {produces.map((produce) => ( 
-      <ProductCard key={produce.id} produce={produce} onOrderClick={handleQuickOrder} /> 
-       ))} 
+        {produces.map((produce) => ( 
+          <ProductCard key={produce.id} produce={produce} /> 
+        ))} 
       </div>
 
         )}

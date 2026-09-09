@@ -3,17 +3,17 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { Produce } from "../lib/api";
+import { useCart } from "../context/CartContext";
+import { useWishlist } from "../context/WishlistContext";
 
 interface ProductCardProps {
   produce: Produce;
-  onOrderClick?: (produce: Produce) => void;
 }
 
-export const ProductCard: React.FC<ProductCardProps> = ({
-  produce,
-  onOrderClick,
-}) => {
+export const ProductCard: React.FC<ProductCardProps> = ({ produce }) => {
   const [imgError, setImgError] = useState(false);
+  const { addToCart } = useCart();
+  const { toggleWishlist, isInWishlist } = useWishlist();
 
   const isAvailable =
     (produce.status === "AVAILABLE" || produce.status === "LOW_STOCK") &&
@@ -36,6 +36,21 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
   const farmerLocation =
     produce.farmer?.location || "Direct Farm Source";
+    
+  const handleAddToCart = () => {
+    addToCart({
+      produceId: produce.id,
+      name: produce.name,
+      price: produce.price,
+      quantity: produce.minOrderQuantity || 1,
+      maxQuantity: produce.quantity,
+      minOrderQuantity: produce.minOrderQuantity || 1,
+      unit: produce.unit || "kg",
+      imagePublicId: produce.imageUrl || undefined,
+      farmerId: produce.farmerId
+    });
+    alert(`${produce.name} added to cart!`);
+  };
 
   return (
     <div
@@ -59,6 +74,29 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         <span className="absolute left-3 top-3 rounded-full bg-white/90 px-3 py-1 text-xs font-bold uppercase tracking-wider text-gray-700 shadow-sm backdrop-blur-md">
           {produce.category}
         </span>
+        
+        {/* Wishlist Toggle */}
+        <button
+          onClick={(e) => { e.preventDefault(); toggleWishlist(produce.id); }}
+          style={{
+            position: "absolute",
+            right: "3px",
+            top: "40px",
+            backgroundColor: "white",
+            border: "none",
+            borderRadius: "50%",
+            width: "32px",
+            height: "32px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+            fontSize: "1.1rem"
+          }}
+        >
+          {isInWishlist(produce.id) ? "❤️" : "🤍"}
+        </button>
 
         {/* Stock Status Badge */}
         <span
@@ -169,9 +207,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           {isAvailable ? (
             <button
               type="button"
-              onClick={() =>
-                onOrderClick && onOrderClick(produce)
-              }
+              onClick={handleAddToCart}
               className="flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-emerald-700 hover:shadow active:scale-[0.98]"
             >
               <svg

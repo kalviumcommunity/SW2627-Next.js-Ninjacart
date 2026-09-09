@@ -585,3 +585,55 @@ export async function loginUser(credentials: LoginData) {
 
   return result;
 }
+
+/**
+ * Fetch orders for the authenticated user
+ */
+export async function getOrders() {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  if (!token) {
+    throw new Error('Authentication required.');
+  }
+
+  const response = await fetch(`${BACKEND_URL}/api/orders`, {
+    cache: 'no-store',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  const result = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new Error(result?.error || result?.message || 'Failed to fetch orders');
+  }
+
+  return result.data;
+}
+
+/**
+ * Update produce listing (Farmer action)
+ */
+export async function updateProduce(id: string, data: Partial<Produce>) {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  if (!token) {
+    throw new Error('Authentication required.');
+  }
+
+  const response = await fetch(`${BACKEND_URL}/api/produce/${id}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(data),
+  });
+
+  const result = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new Error(result?.error || result?.message || 'Failed to update produce');
+  }
+
+  return result.data;
+}

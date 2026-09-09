@@ -1,13 +1,28 @@
 "use client";
 
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
+import { getOrders } from "@/lib/api";
 
 export default function OrdersPage() {
   const { user, role, isAuthenticated, isLoading } = useAuth();
   const effectiveRole = role || user?.role;
+  const [orders, setOrders] = useState<any[]>([]);
+  const [isFetchingOrders, setIsFetchingOrders] = useState(true);
 
-  if (isLoading) {
+  useEffect(() => {
+    if (isAuthenticated) {
+      getOrders()
+        .then(data => setOrders(data || []))
+        .catch(err => console.error("Failed to fetch orders:", err))
+        .finally(() => setIsFetchingOrders(false));
+    } else {
+      setIsFetchingOrders(false);
+    }
+  }, [isAuthenticated]);
+
+  if (isLoading || isFetchingOrders) {
     return (
       <div style={{ maxWidth: "800px", margin: "3rem auto", padding: "2rem", textAlign: "center" }}>
         <div
@@ -138,43 +153,88 @@ export default function OrdersPage() {
         </p>
       </div>
 
-      {/* Orders List / Empty State */}
-      <div
-        style={{
-          backgroundColor: "#ffffff",
-          borderRadius: "16px",
-          padding: "3.5rem 2rem",
-          border: "1px solid #e2e8f0",
-          boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)",
-          textAlign: "center",
-        }}
-      >
-        <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>🛒</div>
-        <h2 style={{ fontSize: "1.3rem", fontWeight: 700, color: "#0f172a", marginBottom: "0.5rem" }}>
-          Ready to Place Wholesale Orders
-        </h2>
-        <p style={{ color: "#64748b", fontSize: "0.95rem", maxWidth: "480px", margin: "0 auto 1.5rem" }}>
-          Browse our live verified farm produce catalogue to place wholesale direct-to-retail orders with 0% middleman markup.
-        </p>
-        <Link
-          href="/catalogue"
+      {orders.length === 0 ? (
+        <div
           style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: "0.5rem",
-            padding: "0.85rem 1.75rem",
-            backgroundColor: "#10b981",
-            color: "#ffffff",
-            borderRadius: "10px",
-            fontWeight: 700,
-            fontSize: "0.95rem",
-            textDecoration: "none",
-            boxShadow: "0 2px 4px rgba(16, 185, 129, 0.2)",
+            backgroundColor: "#ffffff",
+            borderRadius: "16px",
+            padding: "3.5rem 2rem",
+            border: "1px solid #e2e8f0",
+            boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)",
+            textAlign: "center",
           }}
         >
-          Explore Produce Catalogue →
-        </Link>
-      </div>
+          <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>🛒</div>
+          <h2 style={{ fontSize: "1.3rem", fontWeight: 700, color: "#0f172a", marginBottom: "0.5rem" }}>
+            Ready to Place Wholesale Orders
+          </h2>
+          <p style={{ color: "#64748b", fontSize: "0.95rem", maxWidth: "480px", margin: "0 auto 1.5rem" }}>
+            Browse our live verified farm produce catalogue to place wholesale direct-to-retail orders with 0% middleman markup.
+          </p>
+          <Link
+            href="/catalogue"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.5rem",
+              padding: "0.85rem 1.75rem",
+              backgroundColor: "#10b981",
+              color: "#ffffff",
+              borderRadius: "10px",
+              fontWeight: 700,
+              fontSize: "0.95rem",
+              textDecoration: "none",
+              boxShadow: "0 2px 4px rgba(16, 185, 129, 0.2)",
+            }}
+          >
+            Explore Produce Catalogue →
+          </Link>
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+          {orders.map((order) => (
+            <div key={order.id} style={{ backgroundColor: "white", padding: "1.5rem", borderRadius: "16px", border: "1px solid #e2e8f0" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1rem", borderBottom: "1px solid #e2e8f0", paddingBottom: "1rem" }}>
+                <div>
+                  <h3 style={{ color: "#0f172a", fontWeight: 700, fontSize: "1.1rem" }}>Order #{order.id.slice(-6).toUpperCase()}</h3>
+                  <span style={{ color: "#64748b", fontSize: "0.85rem" }}>{new Date(order.createdAt).toLocaleDateString()}</span>
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <span style={{ display: "inline-block", padding: "0.25rem 0.75rem", backgroundColor: order.status === "CONFIRMED" ? "#ecfdf5" : "#f8fafc", color: order.status === "CONFIRMED" ? "#10b981" : "#64748b", borderRadius: "9999px", fontSize: "0.8rem", fontWeight: 700, textTransform: "uppercase" }}>
+                    {order.status}
+                  </span>
+                  <div style={{ marginTop: "0.5rem", fontWeight: 800, color: "#0f172a" }}>₹{order.totalAmount.toFixed(2)}</div>
+                </div>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                {order.items?.map((item: any) => (
+                  <div key={item.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                      <div style={{ width: "48px", height: "48px", borderRadius: "8px", backgroundColor: "#f8fafc", overflow: "hidden" }}>
+                        {item.produce?.imageUrl ? (
+                          <img src={item.produce.imageUrl} alt={item.produce.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        ) : (
+                          <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem" }}>🥬</div>
+                        )}
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 600, color: "#334155" }}>{item.produce?.name || "Unknown Produce"}</div>
+                        <div style={{ fontSize: "0.85rem", color: "#64748b" }}>{item.quantity} units @ ₹{item.priceAtPurchase}/unit</div>
+                      </div>
+                    </div>
+                    <div style={{ fontWeight: 700, color: "#334155" }}>₹{(item.quantity * item.priceAtPurchase).toFixed(2)}</div>
+                  </div>
+                ))}
+              </div>
+              {order.deliveryAddress && (
+                <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid #f1f5f9", fontSize: "0.85rem", color: "#64748b" }}>
+                  <strong>Delivery to:</strong> {order.deliveryAddress}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

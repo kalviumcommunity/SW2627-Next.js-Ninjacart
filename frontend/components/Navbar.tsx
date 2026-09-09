@@ -3,9 +3,13 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { useCart } from "@/context/CartContext";
+import { useWishlist } from "@/context/WishlistContext";
 
 export default function Navbar() {
   const { user, role, isAuthenticated, isLoading, logout } = useAuth();
+  const { totalItems } = useCart();
+  const { wishlistIds } = useWishlist();
   const pathname = usePathname();
   const router = useRouter();
 
@@ -28,7 +32,7 @@ export default function Navbar() {
         </Link>
 
         {/* Navigation Links */}
-        <nav className="nav-links">
+        <nav className="nav-links" style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
           <Link
             href="/catalogue"
             className={`nav-link ${pathname === "/catalogue" ? "active" : ""}`}
@@ -49,6 +53,82 @@ export default function Navbar() {
           >
             📦 Orders
           </Link>
+
+          {/* Cart & Wishlist Icons */}
+          <div style={{ display: "flex", gap: "0.5rem", marginLeft: "0.5rem", marginRight: "0.5rem" }}>
+            <Link
+              href="/wishlist"
+              style={{
+                position: "relative",
+                padding: "0.45rem",
+                borderRadius: "8px",
+                backgroundColor: "#f8fafc",
+                border: "1px solid #e2e8f0",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                textDecoration: "none",
+                color: "#64748b"
+              }}
+            >
+              ❤️
+              {wishlistIds.length > 0 && (
+                <span style={{
+                  position: "absolute",
+                  top: "-5px",
+                  right: "-5px",
+                  backgroundColor: "#ef4444",
+                  color: "white",
+                  borderRadius: "50%",
+                  width: "18px",
+                  height: "18px",
+                  fontSize: "10px",
+                  fontWeight: "bold",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}>
+                  {wishlistIds.length}
+                </span>
+              )}
+            </Link>
+            <Link
+              href="/cart"
+              style={{
+                position: "relative",
+                padding: "0.45rem",
+                borderRadius: "8px",
+                backgroundColor: "#f8fafc",
+                border: "1px solid #e2e8f0",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                textDecoration: "none",
+                color: "#64748b"
+              }}
+            >
+              🛒
+              {totalItems > 0 && (
+                <span style={{
+                  position: "absolute",
+                  top: "-5px",
+                  right: "-5px",
+                  backgroundColor: "#10b981",
+                  color: "white",
+                  borderRadius: "50%",
+                  width: "18px",
+                  height: "18px",
+                  fontSize: "10px",
+                  fontWeight: "bold",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}>
+                  {totalItems}
+                </span>
+              )}
+            </Link>
+          </div>
 
           {/* Dynamic Authentication State (BUG-010 Fix) */}
           {isLoading ? (
