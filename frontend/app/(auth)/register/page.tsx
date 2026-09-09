@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, type FormEvent } from "react"
 import { useRouter } from "next/navigation"
 import { registerUser } from "@/lib/api"
 import Link from "next/link"
@@ -15,7 +15,7 @@ export default function Register() {
   
   const router = useRouter()
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setError("")
     setIsLoading(true)
