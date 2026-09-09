@@ -320,7 +320,7 @@ export const SAMPLE_PRODUCES: Produce[] = [
 ];
 
 /**
- * Fetch paginated produce listings from backend with fallback support
+ * Fetch paginated produce listings from the live catalogue endpoint.
  */
 export async function getProduces(params: ProduceQueryParams = {}): Promise<PaginatedProducesResponse> {
   const {
@@ -354,9 +354,16 @@ export async function getProduces(params: ProduceQueryParams = {}): Promise<Pagi
       if (data.success && data.data) {
         return data.data;
       }
+      throw new Error(data.error || 'Invalid catalogue response');
     }
-  } catch {
-    // Backend unreachable — gracefully fallback to client-side filtered data
+    const errorResult = await res.json().catch(() => null);
+    throw new Error(errorResult?.error || 'Failed to fetch catalogue');
+  } catch (error) {
+    if (error instanceof TypeError) {
+      // Backend unreachable — gracefully fallback to client-side filtered data
+    } else {
+      throw error;
+    }
   }
 
   // Client-side filtering fallback
@@ -412,7 +419,7 @@ export async function getProduces(params: ProduceQueryParams = {}): Promise<Pagi
 }
 
 /**
- * Fetch a single produce item by its ID (Task #20)
+ * Fetch a single produce item by its ID from the live catalogue endpoint.
  */
 export async function getProduce(id: string): Promise<Produce> {
   try {
@@ -425,9 +432,15 @@ export async function getProduce(id: string): Promise<Produce> {
       if (data.success && data.data) {
         return data.data;
       }
+      throw new Error(data.error || 'Invalid catalogue response');
     }
-  } catch {
-    // Backend fallback
+    const errorResult = await res.json().catch(() => null);
+    throw new Error(errorResult?.error || 'Failed to fetch product');
+  } catch (error) {
+    if (!(error instanceof TypeError)) {
+      throw error;
+    }
+    // Backend unreachable — gracefully fallback to the local catalogue
   }
 
   const found = SAMPLE_PRODUCES.find((p) => p.id === id);
@@ -529,7 +542,29 @@ export async function registerUser(data: RegisterData) {
   });
 
   if (!response.ok) {
-    throw new Error('Failed to register');
+    const errorResult = await response.json().catch(() => null);
+    throw new Error(errorResult?.error || 'Failed to register');
+  }
+
+  const result = await response.json();
+  return result;
+}
+
+/**
+ * User login handler
+ */
+export async function loginUser(data: { email: string; password: string }) {
+  const response = await fetch(`${BACKEND_URL}/api/auth/login`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const errorResult = await response.json().catch(() => null);
+    throw new Error(errorResult?.error || 'Failed to login');
   }
 
   const result = await response.json();
@@ -554,6 +589,28 @@ export async function createOrder(orderData: OrderData) {
   if (!response.ok) {
     const errorResult = await response.json().catch(() => null);
     throw new Error(errorResult?.error || 'Failed to create order');
+  }
+
+  const result = await response.json();
+  return result.data;
+}
+
+/**
+ * Fetch orders
+ */
+export async function getOrders() {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+
+  const response = await fetch(`${BACKEND_URL}/api/orders`, {
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    cache: 'no-store'
+  });
+
+  if (!response.ok) {
+    const errorResult = await response.json().catch(() => null);
+    throw new Error(errorResult?.error || 'Failed to fetch orders');
   }
 
   const result = await response.json();
