@@ -640,7 +640,12 @@ const updateProduce = async (req, res, next) => {
     // Status Logic (BUG-009 Fix)
     // -------------------------
     if (quantityWasUpdated && status === undefined) {
-      if (existing.status !== 'ARCHIVED') {
+      // ARCHIVED status should always be preserved during quantity updates
+      if (existing.status === 'ARCHIVED') {
+        // Do nothing - keep ARCHIVED status
+        updateData.status = 'ARCHIVED';
+      } else {
+        // For non-archived statuses, apply automatic status logic
         if (updateData.quantity === 0) {
           updateData.status = 'OUT_OF_STOCK';
         } else if (existing.status === 'OUT_OF_STOCK') {
@@ -656,12 +661,6 @@ const updateProduce = async (req, res, next) => {
 
       if (targetQuantity === 0 && newStatus === 'AVAILABLE') {
         const error = new Error('Cannot set status to AVAILABLE when quantity is 0');
-        error.statusCode = 400;
-        return next(error);
-      }
-      
-      if (targetQuantity > 0 && newStatus === 'ARCHIVED') {
-        const error = new Error('Cannot set status to ARCHIVED when quantity is greater than 0');
         error.statusCode = 400;
         return next(error);
       }
