@@ -146,7 +146,7 @@ const createProduce = async (req, res, next) => {
 
     if (!farmer) {
       const error = new Error('Farmer profile not found for this user');
-      error.statusCode = 403;
+      error.statusCode = 404;
       return next(error);
     }
 
