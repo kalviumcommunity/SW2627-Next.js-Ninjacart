@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from './AuthProvider';
+import { useAuth } from '@/context/AuthContext';
 
 export function AuthGuard({ children, requiredRole }: { children: React.ReactNode, requiredRole?: string }) {
   const { user, isLoading } = useAuth();
