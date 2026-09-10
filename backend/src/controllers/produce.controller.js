@@ -106,8 +106,8 @@ const createProduce = async (req, res, next) => {
 
       if (!VALID_CATEGORIES.includes(normalizedCategory)) {
         const error = new Error(`Invalid category. Allowed values: ${VALID_CATEGORIES.join(', ')}`);
-        error.statusCode = 400;
-        return next(error);
+      error.statusCode = 400;
+      return next(error);
       }
     }
 
@@ -121,8 +121,8 @@ const createProduce = async (req, res, next) => {
 
       if (!VALID_STATUSES.includes(normalizedStatus)) {
         const error = new Error(`Invalid status. Allowed values: ${VALID_STATUSES.join(', ')}`);
-        error.statusCode = 400;
-        return next(error);
+      error.statusCode = 400;
+      return next(error);
       }
     }
 
@@ -247,8 +247,8 @@ const getProduces = async (req, res, next) => {
 
       if (!VALID_STATUSES.includes(normalizedStatus)) {
         const error = new Error(`Invalid status. Allowed values: ${VALID_STATUSES.join(', ')}`);
-        error.statusCode = 400;
-        return next(error);
+      error.statusCode = 400;
+      return next(error);
       }
 
       where.status = normalizedStatus;
@@ -274,8 +274,8 @@ const getProduces = async (req, res, next) => {
 
       if (!VALID_CATEGORIES.includes(normalizedCategory)) {
         const error = new Error(`Invalid category. Allowed values: ${VALID_CATEGORIES.join(', ')}`);
-        error.statusCode = 400;
-        return next(error);
+      error.statusCode = 400;
+      return next(error);
       }
 
       where.category = normalizedCategory;
@@ -483,8 +483,8 @@ const updateProduce = async (req, res, next) => {
 
       if (!farmer || farmer.id !== existing.farmerId) {
         const error = new Error('Forbidden: You can only modify your own produce listings');
-        error.statusCode = 403;
-        return next(error);
+      error.statusCode = 403;
+      return next(error);
       }
     }
 
@@ -499,8 +499,8 @@ const updateProduce = async (req, res, next) => {
         name.trim().length === 0
       ) {
         const error = new Error('Produce name cannot be empty');
-        error.statusCode = 400;
-        return next(error);
+      error.statusCode = 400;
+      return next(error);
       }
 
       updateData.name = name.trim();
@@ -526,8 +526,8 @@ const updateProduce = async (req, res, next) => {
 
       if (!VALID_CATEGORIES.includes(normalizedCategory)) {
         const error = new Error(`Invalid category. Allowed values: ${VALID_CATEGORIES.join(', ')}`);
-        error.statusCode = 400;
-        return next(error);
+      error.statusCode = 400;
+      return next(error);
       }
 
       updateData.category = normalizedCategory;
@@ -544,8 +544,8 @@ const updateProduce = async (req, res, next) => {
         parsedPrice < 0
       ) {
         const error = new Error('Price must be a valid non-negative number');
-        error.statusCode = 400;
-        return next(error);
+      error.statusCode = 400;
+      return next(error);
       }
 
       updateData.price = parsedPrice;
@@ -560,8 +560,8 @@ const updateProduce = async (req, res, next) => {
         unit.trim().length === 0
       ) {
         const error = new Error('Unit cannot be empty');
-        error.statusCode = 400;
-        return next(error);
+      error.statusCode = 400;
+      return next(error);
       }
 
       updateData.unit = unit.trim();
@@ -580,8 +580,8 @@ const updateProduce = async (req, res, next) => {
         parsedQuantity < 0
       ) {
         const error = new Error('Quantity must be a valid non-negative number');
-        error.statusCode = 400;
-        return next(error);
+      error.statusCode = 400;
+      return next(error);
       }
 
       updateData.quantity = parsedQuantity;
@@ -599,8 +599,8 @@ const updateProduce = async (req, res, next) => {
         parsedMinOrderQuantity <= 0
       ) {
         const error = new Error('Minimum order quantity must be greater than 0');
-        error.statusCode = 400;
-        return next(error);
+      error.statusCode = 400;
+      return next(error);
       }
 
       updateData.minOrderQuantity =
@@ -629,8 +629,8 @@ const updateProduce = async (req, res, next) => {
 
       if (!VALID_STATUSES.includes(normalizedStatus)) {
         const error = new Error(`Invalid status. Allowed values: ${VALID_STATUSES.join(', ')}`);
-        error.statusCode = 400;
-        return next(error);
+      error.statusCode = 400;
+      return next(error);
       }
 
       updateData.status = normalizedStatus;
@@ -640,12 +640,7 @@ const updateProduce = async (req, res, next) => {
     // Status Logic (BUG-009 Fix)
     // -------------------------
     if (quantityWasUpdated && status === undefined) {
-      // ARCHIVED status should always be preserved during quantity updates
-      if (existing.status === 'ARCHIVED') {
-        // Do nothing - keep ARCHIVED status
-        updateData.status = 'ARCHIVED';
-      } else {
-        // For non-archived statuses, apply automatic status logic
+      if (existing.status !== 'ARCHIVED') {
         if (updateData.quantity === 0) {
           updateData.status = 'OUT_OF_STOCK';
         } else if (existing.status === 'OUT_OF_STOCK') {
@@ -655,11 +650,9 @@ const updateProduce = async (req, res, next) => {
         // If status was LOW_STOCK or AVAILABLE and quantity > 0, preserve existing status
       }
     } else if (status !== undefined) {
-      // If they explicitly requested a status, respect it but validate against target quantity
-      const newStatus = String(status).trim().toUpperCase();
+      // If they explicitly requested a status, validate against target quantity
       const targetQuantity = quantityWasUpdated ? updateData.quantity : existing.quantity;
-
-      if (targetQuantity === 0 && newStatus === 'AVAILABLE') {
+      if (targetQuantity === 0 && String(status).trim().toUpperCase() === 'AVAILABLE') {
         const error = new Error('Cannot set status to AVAILABLE when quantity is 0');
         error.statusCode = 400;
         return next(error);
@@ -741,8 +734,8 @@ const deleteProduce = async (req, res, next) => {
 
       if (!farmer || farmer.id !== existing.farmerId) {
         const error = new Error('Forbidden: You can only delete your own produce listings');
-        error.statusCode = 403;
-        return next(error);
+      error.statusCode = 403;
+      return next(error);
       }
     }
 
