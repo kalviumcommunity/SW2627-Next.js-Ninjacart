@@ -15,6 +15,13 @@ const errorHandler = (err, req, res, next) => {
     });
   }
 
+  if (['P1001', 'P2024', 'P1017'].includes(err.code)) {
+    return res.status(503).json({
+      success: false,
+      error: 'Database is currently unavailable. Check the backend DATABASE_URL and database status.',
+    });
+  }
+
   const statusCode = err.statusCode || (res.statusCode && res.statusCode !== 200 ? res.statusCode : 500);
   const message = err.message || 'Internal Server Error';
 
