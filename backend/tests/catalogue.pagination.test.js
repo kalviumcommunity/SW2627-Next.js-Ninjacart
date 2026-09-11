@@ -160,6 +160,12 @@ async function runCataloguePaginationSuite() {
     const bulkProduces = [];
     const categories = ['VEGETABLES', 'FRUITS', 'GRAINS', 'TUBERS', 'HERBS'];
 
+    // IMPORTANT: Task #32 - Default catalogue filter excludes OUT_OF_STOCK & ARCHIVED items
+    // This seed creates 7 OUT_OF_STOCK items (i=15,30,45,60,75,90,105) and 98 AVAILABLE items.
+    // After applying the default catalogue filter (when no explicit status param):
+    // - Total seeded: 106 items (1 from step 3 + 105 bulk)
+    // - Catalogue-visible (default filter): 99 items (1 + 98 AVAILABLE)
+    // - Excluded by filter: 7 OUT_OF_STOCK items
     for (let i = 1; i <= 105; i++) {
       bulkProduces.push({
         farmerId: farmerUser.farmer.id,
@@ -178,16 +184,18 @@ async function runCataloguePaginationSuite() {
     await prisma.produce.createMany({
       data: bulkProduces,
     });
-    recordTest('5. Bulk seeded 105 listings for pagination load test', true, 'Total seeded: 105 items');
+    recordTest('5. Bulk seeded 105 listings for pagination load test', true, 'Total seeded: 105 items (7 OUT_OF_STOCK, 98 AVAILABLE)');
 
     // 6. Verify Pagination Math: Page 1 with limit = 10
+    // Query without explicit status param → uses default filter (AVAILABLE & LOW_STOCK only)
     const page1Res = await request('GET', `/api/produce?limit=10&page=1&farmerId=${farmerUser.farmer.id}`);
     const p1 = page1Res.body.data?.pagination;
     const items1 = page1Res.body.data?.produces;
 
+    // Expected: 99 catalogue-visible items (106 seeded - 7 OUT_OF_STOCK excluded by default filter)
     const page1Valid = page1Res.status === 200 &&
       items1.length === 10 &&
-      p1.total >= 106 &&
+      p1.total === 99 &&
       p1.page === 1 &&
       p1.limit === 10 &&
       p1.totalPages === Math.ceil(p1.total / 10) &&
@@ -196,7 +204,7 @@ async function runCataloguePaginationSuite() {
     recordTest(
       '6. Pagination Math Page 1 (limit=10, page=1)',
       page1Valid,
-      `Returned: ${items1.length} items, Total: ${p1.total}, TotalPages: ${p1.totalPages}, HasMore: ${p1.hasMore}`
+      `Returned: ${items1.length} items, Total: ${p1.total} (catalogue-visible, excluding 7 OUT_OF_STOCK), TotalPages: ${p1.totalPages}, HasMore: ${p1.hasMore}`
     );
 
     // 7. Verify Pagination Math: Page 3 with limit = 20

@@ -11,7 +11,7 @@
 
 ## Executive Summary
 
-A comprehensive end-to-end manual test was performed across the complete Ninjacart application covering Authentication, Farmer Dashboard, Add Produce, Retailer Catalogue, Product Details, Order Placement, and Backend APIs. 
+A comprehensive end-to-end manual test was performed across the complete Ninjacart application covering Authentication, Farmer Dashboard, Add Produce, Retailer Catalogue, Product Details, Order Placement, and Backend APIs.
 
 While core backend database schemas, catalogue filtering endpoints (recently merged via PR #48), and UI visual shells are implemented, **critical gaps exist in the frontend application logic**, notably non-functional authentication pages, disabled orderability for low-stock products, missing order history integration, and unauthenticated protected routes.
 
@@ -87,7 +87,7 @@ While core backend database schemas, catalogue filtering endpoints (recently mer
   2. Open `http://localhost:3000/catalogue`.
   3. Inspect the product card for the `LOW_STOCK` produce.
 - **Expected Behavior:** Card displays a "Low Stock" amber badge, shows remaining quantity, and allows clicking "Add to Cart".
-- **Actual Behavior:** 
+- **Actual Behavior:**
   - `isAvailable` evaluates to `false` because `produce.status !== "AVAILABLE"`.
   - The badge displays "Out of Stock" (red).
   - A "Sold Out" overlay covers the image.

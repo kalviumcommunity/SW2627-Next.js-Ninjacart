@@ -15,6 +15,21 @@ const errorHandler = (err, req, res, next) => {
     });
   }
 
+  const isDbConnectionError =
+    ['P1001', 'P2024', 'P1017'].includes(err.code) ||
+    err.name === 'PrismaClientInitializationError' ||
+    (typeof err.message === 'string' &&
+      (err.message.includes("Can't reach database server") ||
+        err.message.includes('ConnectionReset') ||
+        err.message.includes('forcibly closed')));
+
+  if (isDbConnectionError) {
+    return res.status(503).json({
+      success: false,
+      error: 'Database is currently unavailable. Check the backend DATABASE_URL and database status.',
+    });
+  }
+
   const statusCode = err.statusCode || (res.statusCode && res.statusCode !== 200 ? res.statusCode : 500);
   const message = err.message || 'Internal Server Error';
 

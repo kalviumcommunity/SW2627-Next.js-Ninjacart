@@ -1,9 +1,9 @@
 # Ninjacart UI/UX Comprehensive End-to-End Audit & PR Review Report
 
-**Author:** Jovab Sabu  
-**Date:** September 4, 2026  
-**Target Branch:** `development`  
-**Application URL:** `http://localhost:3000` (Frontend) / `http://localhost:5000` (Backend API)  
+**Author:** Jovab Sabu
+**Date:** September 4, 2026
+**Target Branch:** `development`
+**Application URL:** `http://localhost:3000` (Frontend) / `http://localhost:5000` (Backend API)
 
 ---
 

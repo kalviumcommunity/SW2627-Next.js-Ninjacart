@@ -82,8 +82,8 @@ const createProduce = async (req, res, next) => {
     // -------------------------
     const parsedMinOrderQuantity =
       minOrderQuantity === undefined ||
-      minOrderQuantity === null ||
-      minOrderQuantity === ''
+        minOrderQuantity === null ||
+        minOrderQuantity === ''
         ? 1
         : Number(minOrderQuantity);
 
@@ -253,17 +253,19 @@ const getProduces = async (req, res, next) => {
 
       where.status = normalizedStatus;
     } else {
-      // By default, exclude OUT_OF_STOCK and ARCHIVED for general catalogue browsing
-      // Unless it's a farmer viewing their own products
-      if (!farmerId) {
-        where.status = {
-          in: ['AVAILABLE', 'LOW_STOCK'],
-        };
-        // Explicitly exclude sold-out listings (quantity <= 0)
-        where.quantity = {
-          gt: 0,
-        };
-      }
+      // Default catalogue filter excludes unavailable or sold-out listings before pagination.
+      where.AND = [
+        {
+          status: {
+            in: ['AVAILABLE', 'LOW_STOCK'],
+          },
+        },
+        {
+          quantity: {
+            gt: 0,
+          },
+        },
+      ];
     }
 
     // -------------------------

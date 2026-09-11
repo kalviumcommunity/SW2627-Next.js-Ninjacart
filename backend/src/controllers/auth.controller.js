@@ -126,7 +126,7 @@ const login = async (req, res, next) => {
     }
 
     // 3. Ensure JWT_SECRET is configured
-    const jwtSecret = process.env.JWT_SECRET || 'dev_jwt_secret_ninjacart_fallback_2026';
+    const jwtSecret = process.env.JWT_SECRET;
     if (!jwtSecret) {
       console.error(
         'FATAL: JWT_SECRET environment variable is not configured.'

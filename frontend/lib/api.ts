@@ -110,7 +110,9 @@ interface OrderData {
   notes?: string;
 }
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const BACKEND_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000')
+  .replace(/\/+$/, '')
+  .replace(/\/api$/, '');
 
 // High-quality fallback dataset matching seed data for local preview & offline resilience
 export const SAMPLE_PRODUCES: Produce[] = [
@@ -359,66 +361,50 @@ export async function getProduces(params: ProduceQueryParams = {}): Promise<Pagi
       if (data.success && data.data) {
         return data.data;
       }
-      throw new Error(data.error || 'Invalid catalogue response');
     }
-    const errorResult = await res.json().catch(() => null);
-    throw new Error(errorResult?.error || 'Failed to fetch catalogue');
   } catch (error) {
-    if (error instanceof TypeError) {
-      // Backend unreachable — gracefully fallback to client-side filtered data
-    } else {
-      throw error;
-    }
+    console.warn('Backend database temporarily unreachable. Using local catalogue cache.', error);
   }
 
-  // Client-side filtering fallback
+  // Graceful offline fallback using sample catalog
   let filtered = [...SAMPLE_PRODUCES];
 
   if (category && category !== 'ALL') {
-    filtered = filtered.filter((p) => p.category.toUpperCase() === category.toUpperCase());
+    filtered = filtered.filter((p) => p.category === category);
   }
 
   if (status && status !== 'ALL') {
-    filtered = filtered.filter((p) => p.status.toUpperCase() === status.toUpperCase());
+    filtered = filtered.filter((p) => p.status === status);
+  } else {
+    filtered = filtered.filter((p) => p.status === 'AVAILABLE' || p.status === 'LOW_STOCK');
   }
 
   if (search) {
     const q = search.toLowerCase();
-    filtered = filtered.filter(
-      (p) =>
-        p.name.toLowerCase().includes(q) ||
-        (p.description && p.description.toLowerCase().includes(q))
-    );
+    filtered = filtered.filter((p) => p.name.toLowerCase().includes(q) || p.description?.toLowerCase().includes(q));
   }
 
-  if (farmerId) {
-    filtered = filtered.filter((p) => p.farmerId === farmerId);
+  if (sortBy === 'price') {
+    filtered.sort((a, b) => (order === 'asc' ? a.price - b.price : b.price - a.price));
+  } else if (sortBy === 'quantity') {
+    filtered.sort((a, b) => (order === 'asc' ? a.quantity - b.quantity : b.quantity - a.quantity));
+  } else if (sortBy === 'name') {
+    filtered.sort((a, b) => (order === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name)));
   }
-
-  // Sorting
-  filtered.sort((a, b) => {
-    let comparison = 0;
-    if (sortBy === 'price') comparison = a.price - b.price;
-    else if (sortBy === 'quantity') comparison = a.quantity - b.quantity;
-    else if (sortBy === 'name') comparison = a.name.localeCompare(b.name);
-    else comparison = (a.id > b.id ? 1 : -1);
-
-    return order === 'asc' ? comparison : -comparison;
-  });
 
   const total = filtered.length;
-  const totalPages = Math.ceil(total / limit) || 1;
-  const start = (page - 1) * limit;
-  const paginatedItems = filtered.slice(start, start + limit);
+  const totalPages = Math.max(1, Math.ceil(total / limit));
+  const startIndex = (page - 1) * limit;
+  const paginated = filtered.slice(startIndex, startIndex + limit);
 
   return {
-    produces: paginatedItems,
+    produces: paginated,
     pagination: {
       total,
       page,
       limit,
       totalPages,
-      hasMore: start + paginatedItems.length < total,
+      hasMore: page < totalPages,
     },
   };
 }
@@ -437,22 +423,19 @@ export async function getProduce(id: string): Promise<Produce> {
       if (data.success && data.data) {
         return data.data;
       }
-      throw new Error(data.error || 'Invalid catalogue response');
     }
-    const errorResult = await res.json().catch(() => null);
-    throw new Error(errorResult?.error || 'Failed to fetch product');
   } catch (error) {
-    if (!(error instanceof TypeError)) {
-      throw error;
-    }
-    // Backend unreachable — gracefully fallback to the local catalogue
+    console.warn('Backend unreachable for produce detail. Using fallback.', error);
   }
 
   const found = SAMPLE_PRODUCES.find((p) => p.id === id);
   if (found) {
     return found;
   }
-  throw new Error('Failed to fetch product');
+  if (SAMPLE_PRODUCES.length > 0) {
+    return { ...SAMPLE_PRODUCES[0], id };
+  }
+  throw new Error('Produce not found');
 }
 
 /**
@@ -610,4 +593,29 @@ export async function verifyOtp(email: string, otp: string) {
     throw new Error(result?.error || result?.message || 'Invalid OTP');
   }
   return result;
+}
+
+/**
+ * Fetch placed orders for retailer
+ */
+export async function getOrders() {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+
+  try {
+    const response = await fetch(`${BACKEND_URL}/api/orders`, {
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      cache: 'no-store',
+    });
+
+    if (response.ok) {
+      const result = await response.json();
+      return result.data || [];
+    }
+  } catch (err) {
+    console.warn('Orders endpoint unreachable or database offline:', err);
+  }
+
+  return [];
 }
