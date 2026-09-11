@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const prisma = require('../config/db');
+const otpService = require('../services/otp.service');
 
 // Regular expression for validating email format
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -186,8 +187,79 @@ const getMe = async (req, res, next) => {
   }
 };
 
+/**
+ * Send OTP for registration
+ * POST /api/auth/send-otp
+ */
+const sendRegistrationOtp = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    if (!email || typeof email !== 'string' || !EMAIL_REGEX.test(email.trim())) {
+      const error = new Error('Valid email is required');
+      error.statusCode = 400;
+      return next(error);
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Check if user already exists
+    const existingUser = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
+
+    if (existingUser) {
+      const error = new Error('User with this email already exists');
+      error.statusCode = 409;
+      return next(error);
+    }
+
+    await otpService.sendOtp(normalizedEmail);
+
+    return res.status(200).json({
+      success: true,
+      message: 'OTP sent successfully',
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+/**
+ * Verify OTP
+ * POST /api/auth/verify-otp
+ */
+const verifyRegistrationOtp = async (req, res, next) => {
+  try {
+    const { email, otp } = req.body;
+    if (!email || !otp) {
+      const error = new Error('Email and OTP are required');
+      error.statusCode = 400;
+      return next(error);
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+
+    try {
+      otpService.verifyOtp(normalizedEmail, otp);
+
+      return res.status(200).json({
+        success: true,
+        message: 'OTP verified successfully',
+      });
+    } catch (verifyError) {
+      const error = new Error(verifyError.message);
+      error.statusCode = 400;
+      return next(error);
+    }
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   register,
   login,
   getMe,
+  sendRegistrationOtp,
+  verifyRegistrationOtp,
 };

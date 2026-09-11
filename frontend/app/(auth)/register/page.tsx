@@ -1,294 +1,465 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/context/AuthContext';
-import { registerUser } from '@/lib/api';
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { registerUser, loginUser, sendOtp, verifyOtp } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 
 export default function RegisterPage() {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [role, setRole] = useState<"FARMER" | "RETAILER">("RETAILER");
+  const [step, setStep] = useState<1 | 2>(1);
+  const [otp, setOtp] = useState("");
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (cooldown > 0) {
+      timer = setTimeout(() => setCooldown(cooldown - 1), 1000);
+    }
+    return () => clearTimeout(timer);
+  }, [cooldown]);
+
   const router = useRouter();
   const { login } = useAuth();
 
-  const [role, setRole] = useState<'RETAILER' | 'FARMER'>('RETAILER');
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [message, setMessage] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setMessage('');
-    if (!name.trim() || !email.trim() || !password) {
-      setMessage('All fields are required.');
+
+    if (!name.trim() || !email.trim() || !password.trim()) {
+      setError("Please fill out all required fields.");
       return;
     }
+
     if (password.length < 6) {
-      setMessage('Password must be at least 6 characters.');
+      setError("Password must be at least 6 characters long.");
       return;
     }
 
-    setIsSubmitting(true);
-    try {
-      const res = await registerUser({ name: name.trim(), email: email.trim(), password, role });
-      const user = res?.data?.user || { id: res?.data?.id, name: name.trim(), email: email.trim() };
-      const token = res?.data?.token;
+    setIsLoading(true);
+    setError("");
 
-      if (token && user) {
-        login(token, user, role);
+    try {
+      if (step === 1) {
+        // Step 1: Send OTP
+        await sendOtp(email.trim());
+        setCooldown(60); // 60 seconds cooldown
+        setStep(2);
+      } else {
+        // Step 2: Verify OTP and Register
+        if (!otp.trim() || otp.length !== 6) {
+          setError("Please enter a valid 6-digit OTP.");
+          setIsLoading(false);
+          return;
+        }
+
+        await verifyOtp(email.trim(), otp.trim());
+
+        // 1. Register user
+        await registerUser({
+          name: name.trim(),
+          email: email.trim(),
+          password,
+          role,
+        });
+
+        // 2. Automatically log in upon successful registration
+        try {
+          const loginRes = await loginUser({
+            email: email.trim(),
+            password,
+          });
+
+          if (loginRes?.data?.token) {
+            const { token, user, role: userRole } = loginRes.data;
+            login(token, user, userRole);
+
+            if (userRole === "FARMER") {
+              router.push("/farmer/dashboard");
+            } else {
+              router.push("/catalogue");
+            }
+            return;
+          }
+        } catch {
+          // If auto-login fails, redirect to login page
+          router.push("/login");
+          return;
+        }
+
+        router.push("/login");
       }
-      router.push(role === 'FARMER' ? '/farmer/dashboard' : '/catalogue');
-    } catch (err: any) {
-      setMessage(err?.message || 'Registration failed. Please try again.');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Registration failed. Please try again.";
+      setError(message);
     } finally {
-      setIsSubmitting(false);
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <div
       style={{
-        backgroundColor: '#f8fafc',
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '2rem 1.5rem',
+        minHeight: "calc(100vh - 80px)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "2rem 1.5rem",
+        backgroundColor: "#f8fafc",
       }}
     >
       <div
         style={{
-          backgroundColor: '#ffffff',
-          borderRadius: '16px',
-          border: '1px solid #e2e8f0',
-          padding: '2.5rem',
-          maxWidth: '460px',
-          width: '100%',
-          boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.04)',
+          width: "100%",
+          maxWidth: "480px",
+          backgroundColor: "#ffffff",
+          borderRadius: "16px",
+          padding: "2.5rem",
+          boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05)",
+          border: "1px solid #e2e8f0",
         }}
       >
-        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <Link
-            href="/"
+        <div style={{ textAlign: "center", marginBottom: "2rem" }}>
+          <div
             style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: '1rem',
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: "48px",
+              height: "48px",
+              borderRadius: "12px",
+              backgroundColor: "#ecfdf5",
+              color: "#10b981",
+              fontSize: "1.5rem",
+              marginBottom: "1rem",
             }}
           >
-            <img
-              src="/ninjacart_logo.png"
-              alt="Ninjacart"
-              style={{ height: '48px', width: 'auto', objectFit: 'contain' }}
-            />
-          </Link>
-          <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0f172a', marginBottom: '0.25rem' }}>
+            🌾
+          </div>
+          <h1
+            style={{
+              fontSize: "1.75rem",
+              fontWeight: 800,
+              color: "#0f172a",
+              letterSpacing: "-0.02em",
+              marginBottom: "0.5rem",
+            }}
+          >
             Create an Account
           </h1>
-          <p style={{ fontSize: '0.875rem', color: '#64748b' }}>
-            Join Ninjacart's farm-to-retail direct marketplace
+          <p style={{ color: "#64748b", fontSize: "0.95rem" }}>
+            Join Ninjacart to source or list wholesale farm produce directly
           </p>
-
-          {/* Account Role Selector */}
-          <div
-            style={{
-              display: 'flex',
-              backgroundColor: '#f1f5f9',
-              borderRadius: '8px',
-              padding: '4px',
-              marginTop: '1.25rem',
-            }}
-          >
-            <button
-              type="button"
-              onClick={() => setRole('RETAILER')}
-              style={{
-                flex: 1,
-                padding: '0.45rem',
-                borderRadius: '6px',
-                border: 'none',
-                backgroundColor: role === 'RETAILER' ? '#ffffff' : 'transparent',
-                color: role === 'RETAILER' ? '#0f172a' : '#64748b',
-                fontWeight: 600,
-                fontSize: '0.8rem',
-                cursor: 'pointer',
-                boxShadow: role === 'RETAILER' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-              }}
-            >
-              🏪 Retail Store
-            </button>
-            <button
-              type="button"
-              onClick={() => setRole('FARMER')}
-              style={{
-                flex: 1,
-                padding: '0.45rem',
-                borderRadius: '6px',
-                border: 'none',
-                backgroundColor: role === 'FARMER' ? '#ffffff' : 'transparent',
-                color: role === 'FARMER' ? '#0f172a' : '#64748b',
-                fontWeight: 600,
-                fontSize: '0.8rem',
-                cursor: 'pointer',
-                boxShadow: role === 'FARMER' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-              }}
-            >
-              🧑‍🌾 Farmer / Producer
-            </button>
-          </div>
         </div>
 
-        {message && (
+        {error && (
           <div
+            role="alert"
             style={{
-              padding: '0.65rem 0.85rem',
-              borderRadius: '8px',
-              backgroundColor: '#fef2f2',
-              border: '1px solid #fecaca',
-              color: '#b91c1c',
-              fontSize: '0.85rem',
-              marginBottom: '1.25rem',
+              backgroundColor: "#fef2f2",
+              border: "1px solid #fecaca",
+              color: "#dc2626",
+              padding: "0.75rem 1rem",
+              borderRadius: "8px",
+              fontSize: "0.875rem",
+              marginBottom: "1.5rem",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem",
             }}
           >
-            {message}
+            <span>⚠️</span>
+            <span>{error}</span>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
-          <div>
-            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>
-              {role === 'FARMER' ? 'Farm / Producer Name' : 'Full Name / Store Name'}
-            </label>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                backgroundColor: '#ffffff',
-                border: '1px solid #cbd5e1',
-                borderRadius: '8px',
-                padding: '0.6rem 0.85rem',
-                gap: '0.65rem',
-              }}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" style={{ flexShrink: 0 }}>
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                <circle cx="12" cy="7" r="4" />
-              </svg>
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+          {step === 1 && (
+            <>
+              {/* Account Role Selector */}
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: "0.875rem",
+                    fontWeight: 700,
+                    color: "#334155",
+                    marginBottom: "0.5rem",
+                  }}
+                >
+                  Select Account Type *
+                </label>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+                  <button
+                    type="button"
+                    onClick={() => setRole("RETAILER")}
+                    style={{
+                      padding: "0.85rem",
+                      borderRadius: "10px",
+                      border: role === "RETAILER" ? "2px solid #10b981" : "1px solid #cbd5e1",
+                      backgroundColor: role === "RETAILER" ? "#ecfdf5" : "#ffffff",
+                      color: role === "RETAILER" ? "#065f46" : "#475569",
+                      fontWeight: 700,
+                      fontSize: "0.9rem",
+                      cursor: "pointer",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: "0.25rem",
+                      transition: "all 0.2s ease",
+                    }}
+                  >
+                    <span style={{ fontSize: "1.3rem" }}>🏪</span>
+                    <span>Retailer / Buyer</span>
+                    <span style={{ fontSize: "0.75rem", fontWeight: 500, color: "#64748b" }}>Order fresh produce</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setRole("FARMER")}
+                    style={{
+                      padding: "0.85rem",
+                      borderRadius: "10px",
+                      border: role === "FARMER" ? "2px solid #10b981" : "1px solid #cbd5e1",
+                      backgroundColor: role === "FARMER" ? "#ecfdf5" : "#ffffff",
+                      color: role === "FARMER" ? "#065f46" : "#475569",
+                      fontWeight: 700,
+                      fontSize: "0.9rem",
+                      cursor: "pointer",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: "0.25rem",
+                      transition: "all 0.2s ease",
+                    }}
+                  >
+                    <span style={{ fontSize: "1.3rem" }}>🚜</span>
+                    <span>Farmer / Producer</span>
+                    <span style={{ fontSize: "0.75rem", fontWeight: 500, color: "#64748b" }}>List & sell harvest</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Full Name */}
+              <div>
+                <label
+                  htmlFor="register-name"
+                  style={{
+                    display: "block",
+                    fontSize: "0.875rem",
+                    fontWeight: 600,
+                    color: "#334155",
+                    marginBottom: "0.5rem",
+                  }}
+                >
+                  Full Name *
+                </label>
+                <input
+                  id="register-name"
+                  type="text"
+                  placeholder="e.g. Ramesh Patel"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                  style={{
+                    width: "100%",
+                    padding: "0.75rem 1rem",
+                    borderRadius: "8px",
+                    border: "1px solid #cbd5e1",
+                    fontSize: "0.95rem",
+                    outline: "none",
+                  }}
+                />
+              </div>
+
+              {/* Email */}
+              <div>
+                <label
+                  htmlFor="register-email"
+                  style={{
+                    display: "block",
+                    fontSize: "0.875rem",
+                    fontWeight: 600,
+                    color: "#334155",
+                    marginBottom: "0.5rem",
+                  }}
+                >
+                  Email address *
+                </label>
+                <input
+                  id="register-email"
+                  type="email"
+                  placeholder="name@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  style={{
+                    width: "100%",
+                    padding: "0.75rem 1rem",
+                    borderRadius: "8px",
+                    border: "1px solid #cbd5e1",
+                    fontSize: "0.95rem",
+                    outline: "none",
+                  }}
+                />
+              </div>
+
+              {/* Password */}
+              <div>
+                <label
+                  htmlFor="register-password"
+                  style={{
+                    display: "block",
+                    fontSize: "0.875rem",
+                    fontWeight: 600,
+                    color: "#334155",
+                    marginBottom: "0.5rem",
+                  }}
+                >
+                  Password *
+                </label>
+                <input
+                  id="register-password"
+                  type="password"
+                  placeholder="At least 6 characters"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  style={{
+                    width: "100%",
+                    padding: "0.75rem 1rem",
+                    borderRadius: "8px",
+                    border: "1px solid #cbd5e1",
+                    fontSize: "0.95rem",
+                    outline: "none",
+                  }}
+                />
+              </div>
+            </>
+          )}
+
+          {step === 2 && (
+            <div>
+              <div style={{ backgroundColor: "#eff6ff", padding: "1rem", borderRadius: "8px", marginBottom: "1rem" }}>
+                <p style={{ color: "#1e3a8a", fontSize: "0.875rem", margin: 0 }}>
+                  We've sent a 6-digit OTP to <strong>{email}</strong>. Please enter it below to verify your account.
+                </p>
+              </div>
+              <label
+                htmlFor="register-otp"
+                style={{
+                  display: "block",
+                  fontSize: "0.875rem",
+                  fontWeight: 600,
+                  color: "#334155",
+                  marginBottom: "0.5rem",
+                }}
+              >
+                Verification Code (OTP) *
+              </label>
               <input
+                id="register-otp"
                 type="text"
+                placeholder="123456"
+                value={otp}
+                onChange={(e) => setOtp(e.target.value)}
+                maxLength={6}
                 required
-                placeholder={role === 'FARMER' ? 'e.g. Green Valley Farms' : 'e.g. Fresh Mart Retailers'}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                style={{ width: '100%', border: 'none', outline: 'none', fontSize: '0.875rem', color: '#0f172a' }}
-              />
-            </div>
-          </div>
-
-          <div>
-            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>
-              Email Address
-            </label>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                backgroundColor: '#ffffff',
-                border: '1px solid #cbd5e1',
-                borderRadius: '8px',
-                padding: '0.6rem 0.85rem',
-                gap: '0.65rem',
-              }}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" style={{ flexShrink: 0 }}>
-                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-                <polyline points="22,6 12,13 2,6" />
-              </svg>
-              <input
-                type="email"
-                required
-                placeholder="contact@domain.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                style={{ width: '100%', border: 'none', outline: 'none', fontSize: '0.875rem', color: '#0f172a' }}
-              />
-            </div>
-          </div>
-
-          <div>
-            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>
-              Password
-            </label>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                backgroundColor: '#ffffff',
-                border: '1px solid #cbd5e1',
-                borderRadius: '8px',
-                padding: '0.6rem 0.85rem',
-                gap: '0.65rem',
-              }}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" style={{ flexShrink: 0 }}>
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-              </svg>
-              <input
-                type={showPassword ? 'text' : 'password'}
-                required
-                placeholder="At least 6 characters"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                style={{ width: '100%', border: 'none', outline: 'none', fontSize: '0.875rem', color: '#0f172a' }}
+                style={{
+                  width: "100%",
+                  padding: "0.75rem 1rem",
+                  borderRadius: "8px",
+                  border: "1px solid #cbd5e1",
+                  fontSize: "1.25rem",
+                  letterSpacing: "0.25rem",
+                  textAlign: "center",
+                  outline: "none",
+                }}
               />
               <button
                 type="button"
-                onClick={() => setShowPassword(!showPassword)}
+                onClick={() => setStep(1)}
                 style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#94a3b8',
-                  cursor: 'pointer',
-                  padding: 0,
-                  display: 'flex',
-                  alignItems: 'center',
+                  marginTop: "0.5rem",
+                  background: "none",
+                  border: "none",
+                  color: "#64748b",
+                  fontSize: "0.85rem",
+                  cursor: "pointer",
+                  textDecoration: "underline",
                 }}
               >
-                {showPassword ? '👁️' : '👁️‍🗨️'}
+                Change Email / Back
+              </button>
+              
+              <button
+                type="button"
+                onClick={async () => {
+                  if (cooldown > 0) return;
+                  setIsLoading(true);
+                  setError("");
+                  try {
+                    await sendOtp(email.trim());
+                    setCooldown(60);
+                  } catch (err: unknown) {
+                    const message = err instanceof Error ? err.message : "Failed to resend OTP.";
+                    setError(message);
+                  } finally {
+                    setIsLoading(false);
+                  }
+                }}
+                disabled={cooldown > 0 || isLoading}
+                style={{
+                  marginTop: "0.5rem",
+                  background: "none",
+                  border: "none",
+                  color: (cooldown > 0 || isLoading) ? "#94a3b8" : "#3b82f6",
+                  fontSize: "0.85rem",
+                  cursor: (cooldown > 0 || isLoading) ? "not-allowed" : "pointer",
+                  textDecoration: "underline",
+                  display: "block",
+                  width: "100%",
+                }}
+              >
+                {cooldown > 0 ? `Resend OTP in ${cooldown}s` : "Resend OTP"}
               </button>
             </div>
-          </div>
+          )}
 
           <button
             type="submit"
-            disabled={isSubmitting}
+            id="register-submit-btn"
+            disabled={isLoading || (step === 1 && cooldown > 0)}
             style={{
-              backgroundColor: '#16a34a',
-              color: '#ffffff',
+              marginTop: "0.5rem",
+              padding: "0.85rem 1.5rem",
+              backgroundColor: isLoading ? "#94a3b8" : "#10b981",
+              color: "#ffffff",
+              borderRadius: "8px",
               fontWeight: 700,
-              fontSize: '0.95rem',
-              padding: '0.75rem',
-              borderRadius: '8px',
-              border: 'none',
-              cursor: isSubmitting ? 'not-allowed' : 'pointer',
-              marginTop: '0.5rem',
+              fontSize: "1rem",
+              cursor: isLoading ? "not-allowed" : "pointer",
+              border: "none",
+              boxShadow: "0 2px 4px rgba(16, 185, 129, 0.2)",
+              transition: "background-color 0.2s ease",
             }}
           >
-            {isSubmitting ? 'Creating Account...' : 'Register Account'}
+            {isLoading
+              ? (step === 1 ? "Sending OTP..." : "Verifying...")
+              : (step === 1 ? (cooldown > 0 ? `Wait ${cooldown}s to Send OTP` : `Send OTP to Email`) : "Verify & Register")}
           </button>
         </form>
 
-        <div style={{ textAlign: 'center', marginTop: '1.75rem', borderTop: '1px solid #f1f5f9', paddingTop: '1.25rem' }}>
-          <p style={{ fontSize: '0.85rem', color: '#64748b' }}>
-            Already have an account?{' '}
-            <Link href="/login" style={{ fontWeight: 600, color: '#16a34a', textDecoration: 'none' }}>
-              Sign in here
-            </Link>
-          </p>
+        <div style={{ marginTop: "1.75rem", textAlign: "center", fontSize: "0.875rem", color: "#64748b" }}>
+          Already have an account?{" "}
+          <Link href="/login" style={{ color: "#10b981", fontWeight: 600 }}>
+            Sign in
+          </Link>
         </div>
       </div>
     </div>

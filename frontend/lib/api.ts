@@ -569,6 +569,32 @@ export async function loginUser(credentials: LoginData) {
   return result;
 }
 
+export async function sendOtp(email: string) {
+  const response = await fetch(`${BACKEND_URL}/api/auth/send-otp`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  });
+  const result = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(result?.error || result?.message || 'Failed to send OTP');
+  }
+  return result;
+}
+
+export async function verifyOtp(email: string, otp: string) {
+  const response = await fetch(`${BACKEND_URL}/api/auth/verify-otp`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, otp }),
+  });
+  const result = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(result?.error || result?.message || 'Invalid OTP');
+  }
+  return result;
+}
+
 /**
  * Fetch placed orders for retailer
  */
@@ -593,5 +619,3 @@ export async function getOrders() {
 
   return [];
 }
-
-
