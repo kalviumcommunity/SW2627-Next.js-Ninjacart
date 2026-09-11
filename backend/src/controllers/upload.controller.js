@@ -75,6 +75,8 @@ const uploadImage = async (req, res, next) => {
 
     return res.status(200).json({
       success: true,
+      url: uploadResult.secure_url,
+      publicId: uploadResult.public_id,
       data: {
         url: uploadResult.secure_url,
         publicId: uploadResult.public_id,
@@ -85,7 +87,11 @@ const uploadImage = async (req, res, next) => {
       },
     });
   } catch (error) {
-    next(error);
+    console.error('[UploadController Error]:', error.message || error);
+    return res.status(502).json({
+      success: false,
+      error: error.message || 'Failed to upload image to Cloudinary storage',
+    });
   }
 };
 
