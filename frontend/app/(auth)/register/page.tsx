@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { registerUser, loginUser, sendOtp, verifyOtp } from "@/lib/api";
@@ -15,6 +15,15 @@ export default function RegisterPage() {
   const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (cooldown > 0) {
+      timer = setTimeout(() => setCooldown(cooldown - 1), 1000);
+    }
+    return () => clearTimeout(timer);
+  }, [cooldown]);
 
   const router = useRouter();
   const { login } = useAuth();
@@ -39,6 +48,7 @@ export default function RegisterPage() {
       if (step === 1) {
         // Step 1: Send OTP
         await sendOtp(email.trim());
+        setCooldown(60); // 60 seconds cooldown
         setStep(2);
       } else {
         // Step 2: Verify OTP and Register
@@ -386,13 +396,45 @@ export default function RegisterPage() {
               >
                 Change Email / Back
               </button>
+              
+              <button
+                type="button"
+                onClick={async () => {
+                  if (cooldown > 0) return;
+                  setIsLoading(true);
+                  setError("");
+                  try {
+                    await sendOtp(email.trim());
+                    setCooldown(60);
+                  } catch (err: unknown) {
+                    const message = err instanceof Error ? err.message : "Failed to resend OTP.";
+                    setError(message);
+                  } finally {
+                    setIsLoading(false);
+                  }
+                }}
+                disabled={cooldown > 0 || isLoading}
+                style={{
+                  marginTop: "0.5rem",
+                  background: "none",
+                  border: "none",
+                  color: (cooldown > 0 || isLoading) ? "#94a3b8" : "#3b82f6",
+                  fontSize: "0.85rem",
+                  cursor: (cooldown > 0 || isLoading) ? "not-allowed" : "pointer",
+                  textDecoration: "underline",
+                  display: "block",
+                  width: "100%",
+                }}
+              >
+                {cooldown > 0 ? `Resend OTP in ${cooldown}s` : "Resend OTP"}
+              </button>
             </div>
           )}
 
           <button
             type="submit"
             id="register-submit-btn"
-            disabled={isLoading}
+            disabled={isLoading || (step === 1 && cooldown > 0)}
             style={{
               marginTop: "0.5rem",
               padding: "0.85rem 1.5rem",
@@ -409,7 +451,7 @@ export default function RegisterPage() {
           >
             {isLoading
               ? (step === 1 ? "Sending OTP..." : "Verifying...")
-              : (step === 1 ? `Send OTP to Email` : "Verify & Register")}
+              : (step === 1 ? (cooldown > 0 ? `Wait ${cooldown}s to Send OTP` : `Send OTP to Email`) : "Verify & Register")}
           </button>
         </form>
 

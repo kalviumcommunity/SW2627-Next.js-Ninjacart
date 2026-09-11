@@ -1,8 +1,19 @@
 const nodemailer = require('nodemailer');
 
 // In-memory store for OTPs. In production, use Redis or DB.
-// Format: Map<email, { otp: string, expiresAt: number }>
+// Format: Map<email, { otp: string, expiresAt: number, lastSentAt: number }>
 const otpStore = new Map();
+
+// Run a cleanup job every 5 minutes to remove expired OTPs from memory
+// This prevents memory leaks in a long-running process
+setInterval(() => {
+  const now = Date.now();
+  for (const [email, data] of otpStore.entries()) {
+    if (now > data.expiresAt) {
+      otpStore.delete(email);
+    }
+  }
+}, 5 * 60 * 1000);
 
 // Generate a 6-digit OTP
 const generateOtp = () => {
@@ -26,19 +37,29 @@ const createTransporter = () => {
  * Generate, store, and send an OTP to the given email
  */
 const sendOtp = async (email) => {
+  const normalizedEmail = email.toLowerCase();
+  const storedData = otpStore.get(normalizedEmail);
+  const now = Date.now();
+
+  // Rate Limiting: 60 seconds cooldown between requests
+  if (storedData && storedData.lastSentAt && now - storedData.lastSentAt < 60000) {
+    throw new Error('Please wait 60 seconds before requesting a new OTP.');
+  }
+
   const otp = generateOtp();
   // Set expiry to 5 minutes from now
-  const expiresAt = Date.now() + 5 * 60 * 1000;
+  const expiresAt = now + 5 * 60 * 1000;
+  const lastSentAt = now;
 
   // Store OTP
-  otpStore.set(email.toLowerCase(), { otp, expiresAt });
+  otpStore.set(normalizedEmail, { otp, expiresAt, lastSentAt });
 
   try {
     const transporter = createTransporter();
 
     await transporter.sendMail({
       from: process.env.EMAIL_FROM || '"Ninjacart" <noreply@ninjacart.test>',
-      to: email,
+      to: normalizedEmail,
       subject: 'Your Ninjacart Registration OTP',
       text: `Your OTP for Ninjacart registration is: ${otp}. It is valid for 5 minutes.`,
       html: `
@@ -57,7 +78,7 @@ const sendOtp = async (email) => {
   } catch (error) {
     console.error('Error sending OTP email:', error);
     // Even if email fails (e.g. in dev), we log it so we can test without real SMTP
-    console.log(`[DEV MODE] OTP for ${email} is ${otp}`);
+    console.log(`[DEV MODE] OTP for ${normalizedEmail} is ${otp}`);
     // Instead of throwing an error which blocks the UI, we just return true.
     return true;
   }
