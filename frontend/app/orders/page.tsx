@@ -100,6 +100,71 @@ export default function OrdersPage() {
     );
   }
 
+  const isFarmer = effectiveRole === "FARMER";
+
+  if (isFarmer) {
+    return (
+      <div style={{ maxWidth: "640px", margin: "4rem auto", padding: "0 1.5rem" }}>
+        <div
+          style={{
+            backgroundColor: "#ffffff",
+            borderRadius: "16px",
+            padding: "3.5rem 2rem",
+            border: "1px solid #e2e8f0",
+            boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.05)",
+            textAlign: "center",
+          }}
+        >
+          <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>👨‍🌾</div>
+          <h2 style={{ fontSize: "1.4rem", fontWeight: 800, color: "#0f172a", marginBottom: "0.5rem" }}>
+            Farmer Account Detected
+          </h2>
+          <p style={{ color: "#64748b", fontSize: "0.95rem", lineHeight: 1.6, marginBottom: "2rem" }}>
+            The Orders section is designed for retail buyers tracking wholesale produce purchases. To manage your farm produce listings, incoming demand, and inventory, please use the Farmer Portal.
+          </p>
+          <div style={{ display: "flex", gap: "0.75rem", justifyContent: "center", flexWrap: "wrap" }}>
+            <Link
+              href="/farmer/dashboard"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.5rem",
+                padding: "0.85rem 1.75rem",
+                backgroundColor: "#10b981",
+                color: "#ffffff",
+                borderRadius: "10px",
+                fontWeight: 700,
+                fontSize: "0.95rem",
+                textDecoration: "none",
+                boxShadow: "0 2px 4px rgba(16, 185, 129, 0.2)",
+              }}
+            >
+              Go to Farmer Portal →
+            </Link>
+            <Link
+              href="/catalogue"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.5rem",
+                padding: "0.85rem 1.5rem",
+                backgroundColor: "#f8fafc",
+                color: "#334155",
+                borderRadius: "10px",
+                fontWeight: 600,
+                fontSize: "0.95rem",
+                textDecoration: "none",
+                border: "1px solid #cbd5e1",
+              }}
+            >
+              Browse Catalogue
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ maxWidth: "1000px", margin: "2rem auto", padding: "0 1.5rem 4rem" }}>
       {/* Header Banner */}

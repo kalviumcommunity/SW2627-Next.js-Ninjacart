@@ -84,7 +84,7 @@ async function runCatalogueFilterSuite() {
     await new Promise((resolve) => server.listen(0, resolve));
     const port = server.address().port;
     baseUrl = `http://localhost:${port}`;
-    
+
     // Cleanup
     const testEmail = 'filter_farmer@ninjacart.com';
     await prisma.produce.deleteMany({
@@ -131,10 +131,10 @@ async function runCatalogueFilterSuite() {
     // 1 & 2 & 3. Test Catalogue Fetch (No Farmer ID specified implies general catalogue)
     const catalogueRes = await request('GET', `/api/produce?limit=10&page=1`);
     const produces = catalogueRes.body.data?.produces || [];
-    
+
     // Filter the items belonging to our test farmer just in case there are others in DB
     const myProduces = produces.filter(p => p.farmerId === farmerId);
-    
+
     const hasAvailable = myProduces.some(p => p.name === 'Available Item');
     const hasLowStock = myProduces.some(p => p.name === 'Low Stock Item');
     const hasZeroQuantity = myProduces.some(p => p.name === 'Zero Quantity Item');

@@ -12,12 +12,6 @@ if (!fs.existsSync(envPath)) {
 
 require('dotenv').config({ path: envPath });
 
-// Fallback defaults for local development if not specified
-if (!process.env.JWT_SECRET) {
-  process.env.JWT_SECRET = 'dev_jwt_secret_ninjacart_fallback_2026';
-  console.warn('⚠️  JWT_SECRET not set in environment. Using development fallback secret.');
-}
-
 const app = require('./app');
 const prisma = require('./config/db');
 

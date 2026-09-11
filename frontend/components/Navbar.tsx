@@ -21,7 +21,11 @@ export default function Navbar() {
       <div className="navbar-container">
         {/* Brand Logo */}
         <Link href="/" className="logo-brand">
-          <span className="logo-badge">🌾 NINJAKART</span>
+          <img
+            src="/ninjacart_logo.png"
+            alt="Ninjacart"
+            className="brand-logo-image"
+          />
           <span style={{ fontWeight: 600, fontSize: "0.9rem", color: "#64748b" }}>
             Direct-to-Retail
           </span>
