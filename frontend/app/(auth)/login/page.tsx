@@ -16,12 +16,6 @@ export default function LoginPage() {
   const router = useRouter();
   const { login } = useAuth();
 
-  const handleQuickFill = (demoEmail: string, demoPass: string) => {
-    setEmail(demoEmail);
-    setPassword(demoPass);
-    setError("");
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !password.trim()) {
@@ -249,47 +243,6 @@ export default function LoginPage() {
             {isLoading ? "Signing in..." : "Sign In"}
           </button>
         </form>
-
-        {/* Demo Accounts Quick-Fill helper */}
-        <div style={{ marginTop: "1.5rem", padding: "1rem", backgroundColor: "#f8fafc", borderRadius: "8px", border: "1px dashed #cbd5e1" }}>
-          <p style={{ fontSize: "0.75rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "0.5rem" }}>
-            Demo Test Accounts
-          </p>
-          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-            <button
-              type="button"
-              onClick={() => handleQuickFill("ramesh.farmer@ninjacart.com", "Password@123")}
-              style={{
-                fontSize: "0.75rem",
-                padding: "0.35rem 0.65rem",
-                backgroundColor: "#ffffff",
-                border: "1px solid #e2e8f0",
-                borderRadius: "6px",
-                cursor: "pointer",
-                color: "#059669",
-                fontWeight: 600,
-              }}
-            >
-              👨‍🌾 Farmer Demo
-            </button>
-            <button
-              type="button"
-              onClick={() => handleQuickFill("freshmart.retailer@ninjacart.com", "Password@123")}
-              style={{
-                fontSize: "0.75rem",
-                padding: "0.35rem 0.65rem",
-                backgroundColor: "#ffffff",
-                border: "1px solid #e2e8f0",
-                borderRadius: "6px",
-                cursor: "pointer",
-                color: "#2563eb",
-                fontWeight: 600,
-              }}
-            >
-              🏪 Retailer Demo
-            </button>
-          </div>
-        </div>
 
         <div style={{ marginTop: "1.5rem", textAlign: "center", fontSize: "0.875rem", color: "#64748b" }}>
           Don&apos;t have an account?{" "}
