@@ -35,8 +35,11 @@ const server = app.listen(PORT, async () => {
     console.log('✅ PostgreSQL Database connected successfully via Prisma.');
   } catch (dbError) {
     console.warn('\n⚠️  [DATABASE WARNING] Could not connect to PostgreSQL database.');
-    console.warn(`ℹ️  Ensure your DATABASE_URL in backend/.env is set properly:`);
+    console.warn(`ℹ️  Ensure your DATABASE_URL in backend/.env uses the current external connection string from your database provider:`);
     console.warn(`   DATABASE_URL="postgresql://[user]:[password]@[host]:5432/[db]?schema=public"`);
+    if (dbError.code === 'P1001') {
+      console.warn('   The configured database host is unreachable. Confirm the Render database is running and copy its current External Database URL.');
+    }
     console.warn(`   Error Details: ${dbError.message}\n`);
   }
 });
