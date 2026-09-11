@@ -7,6 +7,7 @@ import Pagination from '../../components/Pagination';
 import OrderModal from '../../components/OrderModal';
 import { getProduces, Produce } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
+import { useCart } from '../../context/CartContext';
 
 const CATEGORIES: { label: string; value: string; icon: string }[] = [
   { label: 'All Produce', value: 'ALL', icon: '🧺' },
@@ -95,10 +96,11 @@ export default function RetailerCataloguePage() {
     window.scrollTo({ top: 300, behavior: 'smooth' });
   };
 
+  const { addItem } = useCart();
+
   const handleQuickOrder = (prod: Produce) => {
     if (isFarmer) return;
-    setSelectedProduce(prod);
-    setIsOrderModalOpen(true);
+    addItem(prod);
   };
 
   return (

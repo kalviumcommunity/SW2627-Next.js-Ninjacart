@@ -6,12 +6,14 @@ import { useParams } from 'next/navigation';
 import { getProduceById, Produce } from '@/lib/api';
 import OrderModal from '@/components/OrderModal';
 import { useAuth } from '@/context/AuthContext';
+import { useCart } from '@/context/CartContext';
 
 const fallbackImage = 'https://images.unsplash.com/photo-1610348725531-843dff563e2c?auto=format&fit=crop&w=1000&q=80';
 const panelStyle = { backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '1.5rem', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' };
 
 export default function ProductDetailPage() {
   const { role, user } = useAuth();
+  const { addItem } = useCart();
   const isFarmer = (role || user?.role) === 'FARMER';
 
   const params = useParams();
@@ -103,6 +105,11 @@ export default function ProductDetailPage() {
   const farmerLocation = produce.farmer?.location || 'Direct Farm Region';
   const farmerBio = produce.farmer?.bio || 'Dedicated producer practicing sustainable farming and strict post-harvest handling standards.';
   const updateQuantity = (value: number) => setOrderQuantity(Math.min(maxQty, Math.max(0, value)));
+
+  const handleAddToCart = () => {
+    if (!produce || !isQuantityValid) return;
+    addItem(produce, orderQuantity);
+  };
 
   return (
     <div className="main-content">
@@ -278,26 +285,53 @@ export default function ProductDetailPage() {
                   </span>
                   <strong style={{ color: '#065f46', fontSize: '1.5rem', fontWeight: 800 }}>₹{subtotal}</strong>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setIsOrderModalOpen(true)}
-                  disabled={!isQuantityValid}
-                  style={{
-                    width: '100%',
-                    padding: '0.9rem',
-                    borderRadius: '12px',
-                    backgroundColor: isQuantityValid ? '#10b981' : '#94a3b8',
-                    color: '#ffffff',
-                    fontWeight: 700,
-                    fontSize: '1rem',
-                    cursor: isQuantityValid ? 'pointer' : 'not-allowed',
-                    border: 'none',
-                    transition: 'all 0.2s ease',
-                    boxShadow: isQuantityValid ? '0 2px 6px rgba(16, 185, 129, 0.3)' : 'none',
-                  }}
-                >
-                  🛒 Place Wholesale Order Now
-                </button>
+
+                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                  <button
+                    type="button"
+                    onClick={handleAddToCart}
+                    disabled={!isQuantityValid}
+                    style={{
+                      flex: 1,
+                      padding: '0.9rem',
+                      borderRadius: '12px',
+                      backgroundColor: '#ffffff',
+                      color: isQuantityValid ? '#065f46' : '#94a3b8',
+                      border: isQuantityValid ? '2px solid #10b981' : '2px solid #cbd5e1',
+                      fontWeight: 700,
+                      fontSize: '0.95rem',
+                      cursor: isQuantityValid ? 'pointer' : 'not-allowed',
+                      transition: 'all 0.2s ease',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.4rem',
+                    }}
+                  >
+                    🛒 Add to Cart
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsOrderModalOpen(true)}
+                    disabled={!isQuantityValid}
+                    style={{
+                      flex: 1.2,
+                      padding: '0.9rem',
+                      borderRadius: '12px',
+                      backgroundColor: isQuantityValid ? '#10b981' : '#94a3b8',
+                      color: '#ffffff',
+                      fontWeight: 700,
+                      fontSize: '0.95rem',
+                      cursor: isQuantityValid ? 'pointer' : 'not-allowed',
+                      border: 'none',
+                      transition: 'all 0.2s ease',
+                      boxShadow: isQuantityValid ? '0 2px 6px rgba(16, 185, 129, 0.3)' : 'none',
+                    }}
+                  >
+                    ⚡ Buy Now
+                  </button>
+                </div>
               </>
             )}
           </section>

@@ -82,8 +82,8 @@ const createProduce = async (req, res, next) => {
     // -------------------------
     const parsedMinOrderQuantity =
       minOrderQuantity === undefined ||
-      minOrderQuantity === null ||
-      minOrderQuantity === ''
+        minOrderQuantity === null ||
+        minOrderQuantity === ''
         ? 1
         : Number(minOrderQuantity);
 
@@ -106,8 +106,8 @@ const createProduce = async (req, res, next) => {
 
       if (!VALID_CATEGORIES.includes(normalizedCategory)) {
         const error = new Error(`Invalid category. Allowed values: ${VALID_CATEGORIES.join(', ')}`);
-      error.statusCode = 400;
-      return next(error);
+        error.statusCode = 400;
+        return next(error);
       }
     }
 
@@ -121,8 +121,8 @@ const createProduce = async (req, res, next) => {
 
       if (!VALID_STATUSES.includes(normalizedStatus)) {
         const error = new Error(`Invalid status. Allowed values: ${VALID_STATUSES.join(', ')}`);
-      error.statusCode = 400;
-      return next(error);
+        error.statusCode = 400;
+        return next(error);
       }
     }
 
@@ -247,8 +247,8 @@ const getProduces = async (req, res, next) => {
 
       if (!VALID_STATUSES.includes(normalizedStatus)) {
         const error = new Error(`Invalid status. Allowed values: ${VALID_STATUSES.join(', ')}`);
-      error.statusCode = 400;
-      return next(error);
+        error.statusCode = 400;
+        return next(error);
       }
 
       where.status = normalizedStatus;
@@ -276,8 +276,8 @@ const getProduces = async (req, res, next) => {
 
       if (!VALID_CATEGORIES.includes(normalizedCategory)) {
         const error = new Error(`Invalid category. Allowed values: ${VALID_CATEGORIES.join(', ')}`);
-      error.statusCode = 400;
-      return next(error);
+        error.statusCode = 400;
+        return next(error);
       }
 
       where.category = normalizedCategory;
@@ -485,8 +485,8 @@ const updateProduce = async (req, res, next) => {
 
       if (!farmer || farmer.id !== existing.farmerId) {
         const error = new Error('Forbidden: You can only modify your own produce listings');
-      error.statusCode = 403;
-      return next(error);
+        error.statusCode = 403;
+        return next(error);
       }
     }
 
@@ -501,8 +501,8 @@ const updateProduce = async (req, res, next) => {
         name.trim().length === 0
       ) {
         const error = new Error('Produce name cannot be empty');
-      error.statusCode = 400;
-      return next(error);
+        error.statusCode = 400;
+        return next(error);
       }
 
       updateData.name = name.trim();
@@ -528,8 +528,8 @@ const updateProduce = async (req, res, next) => {
 
       if (!VALID_CATEGORIES.includes(normalizedCategory)) {
         const error = new Error(`Invalid category. Allowed values: ${VALID_CATEGORIES.join(', ')}`);
-      error.statusCode = 400;
-      return next(error);
+        error.statusCode = 400;
+        return next(error);
       }
 
       updateData.category = normalizedCategory;
@@ -546,8 +546,8 @@ const updateProduce = async (req, res, next) => {
         parsedPrice < 0
       ) {
         const error = new Error('Price must be a valid non-negative number');
-      error.statusCode = 400;
-      return next(error);
+        error.statusCode = 400;
+        return next(error);
       }
 
       updateData.price = parsedPrice;
@@ -562,8 +562,8 @@ const updateProduce = async (req, res, next) => {
         unit.trim().length === 0
       ) {
         const error = new Error('Unit cannot be empty');
-      error.statusCode = 400;
-      return next(error);
+        error.statusCode = 400;
+        return next(error);
       }
 
       updateData.unit = unit.trim();
@@ -582,8 +582,8 @@ const updateProduce = async (req, res, next) => {
         parsedQuantity < 0
       ) {
         const error = new Error('Quantity must be a valid non-negative number');
-      error.statusCode = 400;
-      return next(error);
+        error.statusCode = 400;
+        return next(error);
       }
 
       updateData.quantity = parsedQuantity;
@@ -601,8 +601,8 @@ const updateProduce = async (req, res, next) => {
         parsedMinOrderQuantity <= 0
       ) {
         const error = new Error('Minimum order quantity must be greater than 0');
-      error.statusCode = 400;
-      return next(error);
+        error.statusCode = 400;
+        return next(error);
       }
 
       updateData.minOrderQuantity =
@@ -631,8 +631,8 @@ const updateProduce = async (req, res, next) => {
 
       if (!VALID_STATUSES.includes(normalizedStatus)) {
         const error = new Error(`Invalid status. Allowed values: ${VALID_STATUSES.join(', ')}`);
-      error.statusCode = 400;
-      return next(error);
+        error.statusCode = 400;
+        return next(error);
       }
 
       updateData.status = normalizedStatus;
@@ -736,8 +736,8 @@ const deleteProduce = async (req, res, next) => {
 
       if (!farmer || farmer.id !== existing.farmerId) {
         const error = new Error('Forbidden: You can only delete your own produce listings');
-      error.statusCode = 403;
-      return next(error);
+        error.statusCode = 403;
+        return next(error);
       }
     }
 
