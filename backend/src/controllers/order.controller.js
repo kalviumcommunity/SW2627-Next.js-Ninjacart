@@ -14,15 +14,15 @@ class OrderController {
 
       if (!items || !Array.isArray(items) || items.length === 0) {
         const error = new Error('Order items are required and must be a non-empty array');
-      error.statusCode = 400;
-      return next(error);
+        error.statusCode = 400;
+        return next(error);
       }
 
       for (const item of items) {
         if (!item.produceId || typeof item.quantity !== 'number' || item.quantity <= 0) {
           const error = new Error('Each item must have a valid produceId and a positive quantity');
-      error.statusCode = 400;
-      return next(error);
+          error.statusCode = 400;
+          return next(error);
         }
       }
 
@@ -32,8 +32,8 @@ class OrderController {
 
       if (!retailer) {
         const error = new Error('Retailer profile not found for this user');
-      error.statusCode = 404;
-      return next(error);
+        error.statusCode = 404;
+        return next(error);
       }
 
       const orderResult = await inventoryService.placeOrderWithInventoryDeduction({
@@ -70,8 +70,8 @@ class OrderController {
 
         if (!retailer) {
           const error = new Error('Retailer profile not found');
-      error.statusCode = 404;
-      return next(error);
+          error.statusCode = 404;
+          return next(error);
         }
         whereClause.retailerId = retailer.id;
       } else if (role === 'ADMIN') {
@@ -79,8 +79,8 @@ class OrderController {
         whereClause = {};
       } else {
         const error = new Error('Access denied: You are not authorized to view orders');
-      error.statusCode = 403;
-      return next(error);
+        error.statusCode = 403;
+        return next(error);
       }
 
       const orders = await prisma.order.findMany({
@@ -139,14 +139,14 @@ class OrderController {
 
         if (!retailer) {
           const error = new Error('Retailer profile not found');
-      error.statusCode = 404;
-      return next(error);
+          error.statusCode = 404;
+          return next(error);
         }
         whereClause.retailerId = retailer.id;
       } else if (role !== 'ADMIN') {
         const error = new Error('Access denied: You are not authorized to view this order');
-      error.statusCode = 403;
-      return next(error);
+        error.statusCode = 403;
+        return next(error);
       }
 
       const order = await prisma.order.findFirst({
@@ -180,8 +180,8 @@ class OrderController {
 
       if (!order) {
         const error = new Error('Order not found');
-      error.statusCode = 404;
-      return next(error);
+        error.statusCode = 404;
+        return next(error);
       }
 
       return res.status(200).json({

@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { useCart } from "@/context/CartContext";
 
 export default function Navbar() {
   const { user, role, isAuthenticated, isLoading, logout } = useAuth();
+  const { totalCount, toggleCart } = useCart();
   const pathname = usePathname();
   const router = useRouter();
 
@@ -15,6 +17,7 @@ export default function Navbar() {
   };
 
   const isFarmer = (role || user?.role) === "FARMER";
+  const isRetailer = (role || user?.role) === "RETAILER";
 
   return (
     <header className="navbar">
@@ -31,30 +34,89 @@ export default function Navbar() {
           </span>
         </Link>
 
-        {/* Navigation Links */}
+        {/* Navigation Links — Role-Isolated */}
         <nav className="nav-links">
-          <Link
-            href="/catalogue"
-            className={`nav-link ${pathname === "/catalogue" ? "active" : ""}`}
-          >
-            🛍️ Produce Catalogue
-          </Link>
+          {/* Farmer-Only Navigation */}
+          {isAuthenticated && isFarmer && (
+            <>
+              <Link
+                href="/farmer/dashboard"
+                className={`nav-link ${pathname === "/farmer/dashboard" ? "active" : ""}`}
+              >
+                🚜 My Produce Dashboard
+              </Link>
 
-          <Link
-            href="/farmer/dashboard"
-            className={`nav-link ${pathname.startsWith("/farmer") ? "active" : ""}`}
-          >
-            🚜 Farmer Portal
-          </Link>
+              <Link
+                href="/farmer/add-produce"
+                className={`nav-link ${pathname === "/farmer/add-produce" ? "active" : ""}`}
+              >
+                🌱 Add Produce Listing
+              </Link>
+            </>
+          )}
 
-          <Link
-            href="/orders"
-            className={`nav-link ${pathname === "/orders" ? "active" : ""}`}
-          >
-            📦 Orders
-          </Link>
+          {/* Retailer / Guest Navigation */}
+          {(!isAuthenticated || isRetailer) && (
+            <>
+              <Link
+                href="/catalogue"
+                className={`nav-link ${pathname.startsWith("/catalogue") ? "active" : ""}`}
+              >
+                🛍️ Produce Catalogue
+              </Link>
 
-          {/* Dynamic Authentication State (BUG-010 Fix) */}
+              {isAuthenticated && isRetailer && (
+                <Link
+                  href="/orders"
+                  className={`nav-link ${pathname === "/orders" ? "active" : ""}`}
+                >
+                  📦 My Orders
+                </Link>
+              )}
+
+              {/* Cart Button with Count Badge */}
+              <button
+                type="button"
+                onClick={toggleCart}
+                id="navbar-cart-btn"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "0.4rem",
+                  padding: "0.45rem 0.9rem",
+                  backgroundColor: "#ecfdf5",
+                  border: "1px solid #a7f3d0",
+                  borderRadius: "9999px",
+                  color: "#065f46",
+                  fontWeight: 700,
+                  fontSize: "0.875rem",
+                  cursor: "pointer",
+                  transition: "all 0.2s ease",
+                }}
+                aria-label={`Open shopping cart (${totalCount} items)`}
+              >
+                <span>🛒</span>
+                <span>Cart</span>
+                {totalCount > 0 && (
+                  <span
+                    style={{
+                      backgroundColor: "#10b981",
+                      color: "#ffffff",
+                      fontSize: "0.75rem",
+                      fontWeight: 800,
+                      padding: "0.1rem 0.45rem",
+                      borderRadius: "9999px",
+                      lineHeight: 1.2,
+                    }}
+                  >
+                    {totalCount}
+                  </span>
+                )}
+              </button>
+            </>
+          )}
+
+          {/* Dynamic Authentication State */}
           {isLoading ? (
             <div
               style={{
@@ -100,7 +162,15 @@ export default function Navbar() {
                   {isFarmer ? "🚜" : "🏪"}
                 </span>
 
-                <span style={{ fontWeight: 600, maxWidth: "120px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                <span
+                  style={{
+                    fontWeight: 600,
+                    maxWidth: "120px",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
                   {user.name || "User"}
                 </span>
 
