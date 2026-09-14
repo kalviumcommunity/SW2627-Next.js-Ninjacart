@@ -142,3 +142,17 @@ model OrderItem {
   @@index([produceId])
   @@map("order_items")
 }
+
+model OtpVerification {
+  id        String   @id @default(uuid())
+  email     String
+  code      String
+  purpose   String   // 'REGISTRATION' | 'LOGIN'
+  expiresAt DateTime
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email, purpose])
+  @@map("otp_verifications")
+}

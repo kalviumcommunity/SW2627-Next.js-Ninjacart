@@ -92,11 +92,20 @@ export interface RegisterData {
   email: string;
   password: string;
   role: string;
+  otp?: string;
 }
 
 export interface LoginData {
   email: string;
-  password: string;
+  password?: string;
+  otp?: string;
+  sendOtp?: boolean;
+}
+
+export interface SendOtpParams {
+  email: string;
+  purpose: 'REGISTRATION' | 'LOGIN';
+  name?: string;
 }
 
 interface OrderItemData {
@@ -504,7 +513,49 @@ export async function uploadImage(file: File) {
 }
 
 /**
- * User registration handler
+ * Send OTP verification code to email
+ */
+export async function sendOtp(params: SendOtpParams) {
+  const response = await fetch(`${BACKEND_URL}/api/auth/send-otp`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(params),
+  });
+
+  const result = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new Error(result?.error || result?.message || 'Failed to send verification code');
+  }
+
+  return result;
+}
+
+/**
+ * Resend OTP verification code with rate limit cooldown
+ */
+export async function resendOtp(params: { email: string; purpose: 'REGISTRATION' | 'LOGIN' }) {
+  const response = await fetch(`${BACKEND_URL}/api/auth/resend-otp`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(params),
+  });
+
+  const result = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new Error(result?.error || result?.message || 'Failed to resend verification code');
+  }
+
+  return result;
+}
+
+/**
+ * User registration handler with optional OTP
  */
 export async function registerUser(data: RegisterData) {
   const response = await fetch(`${BACKEND_URL}/api/auth/register`, {
@@ -550,12 +601,16 @@ export async function createOrder(orderData: OrderData) {
 
 /**
  * User login handler
+ * - Sends Authorization header if token exists (JWT present -> OTP not needed)
+ * - If JWT is absent -> triggers OTP verification flow
  */
 export async function loginUser(credentials: LoginData) {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   const response = await fetch(`${BACKEND_URL}/api/auth/login`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: JSON.stringify(credentials),
   });
@@ -570,7 +625,7 @@ export async function loginUser(credentials: LoginData) {
 }
 
 /**
- * Fetch placed orders for retailer
+ * Fetch placed orders for retailer or farmer
  */
 export async function getOrders() {
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
@@ -592,6 +647,139 @@ export async function getOrders() {
   }
 
   return [];
+}
+
+/**
+ * Update status of an order (Farmer / Retailer action)
+ */
+export async function updateOrderStatus(orderId: string, status: string) {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  if (!token) {
+    throw new Error('Authentication required.');
+  }
+
+  const res = await fetch(`${BACKEND_URL}/api/orders/${orderId}/status`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ status }),
+  });
+
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new Error(data?.error || data?.message || 'Failed to update order status');
+  }
+
+  return data.data;
+}
+
+/**
+ * Update produce listing (Farmer action)
+ */
+export async function updateProduct(id: string, product: Partial<CreateProductData>): Promise<Produce> {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  if (!token) {
+    throw new Error('Authentication required. Please sign in as a farmer.');
+  }
+
+  const res = await fetch(`${BACKEND_URL}/api/produce/${id}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(product),
+  });
+
+  const data = await res.json().catch(() => null);
+
+  if (!res.ok) {
+    throw new Error(data?.error || data?.message || 'Failed to update produce');
+  }
+
+  return data.data;
+}
+
+/**
+ * Delete produce listing (Farmer action)
+ */
+export async function deleteProduct(id: string): Promise<boolean> {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  if (!token) {
+    throw new Error('Authentication required. Please sign in as a farmer.');
+  }
+
+  const res = await fetch(`${BACKEND_URL}/api/produce/${id}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  const data = await res.json().catch(() => null);
+
+  if (!res.ok) {
+    throw new Error(data?.error || data?.message || 'Failed to delete produce');
+  }
+
+  return true;
+}
+
+/**
+ * Fetch current user profile from server
+ */
+export async function getMe() {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  if (!token) return null;
+
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/auth/me`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      cache: 'no-store',
+    });
+
+    if (!res.ok) return null;
+    const data = await res.json().catch(() => null);
+    return data?.data || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Update user / farmer / retailer profile
+ */
+export async function updateProfile(profileData: {
+  name?: string;
+  phone?: string;
+  location?: string;
+  bio?: string;
+  storeName?: string;
+}) {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  if (!token) {
+    throw new Error('Authentication required');
+  }
+
+  const res = await fetch(`${BACKEND_URL}/api/auth/profile`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(profileData),
+  });
+
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new Error(data?.error || data?.message || 'Failed to update profile');
+  }
+
+  return data.data;
 }
 
 

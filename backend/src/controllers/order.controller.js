@@ -74,6 +74,25 @@ class OrderController {
           return next(error);
         }
         whereClause.retailerId = retailer.id;
+      } else if (role === 'FARMER') {
+        const farmer = await prisma.farmer.findUnique({
+          where: { userId },
+        });
+
+        if (!farmer) {
+          const error = new Error('Farmer profile not found');
+          error.statusCode = 404;
+          return next(error);
+        }
+        whereClause = {
+          items: {
+            some: {
+              produce: {
+                farmerId: farmer.id,
+              },
+            },
+          },
+        };
       } else if (role === 'ADMIN') {
         // Admin sees all
         whereClause = {};
@@ -95,6 +114,7 @@ class OrderController {
                   unit: true,
                   price: true,
                   imageUrl: true,
+                  farmerId: true,
                 },
               },
             },
@@ -143,6 +163,26 @@ class OrderController {
           return next(error);
         }
         whereClause.retailerId = retailer.id;
+      } else if (role === 'FARMER') {
+        const farmer = await prisma.farmer.findUnique({
+          where: { userId: req.user.id },
+        });
+
+        if (!farmer) {
+          const error = new Error('Farmer profile not found');
+          error.statusCode = 404;
+          return next(error);
+        }
+        whereClause = {
+          id,
+          items: {
+            some: {
+              produce: {
+                farmerId: farmer.id,
+              },
+            },
+          },
+        };
       } else if (role !== 'ADMIN') {
         const error = new Error('Access denied: You are not authorized to view this order');
         error.statusCode = 403;
@@ -187,6 +227,129 @@ class OrderController {
       return res.status(200).json({
         success: true,
         data: order,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Update status of an existing order
+   * PATCH /api/orders/:id/status
+   */
+  async updateOrderStatus(req, res, next) {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+      const role = req.user.role;
+      const userId = req.user.id;
+
+      if (!status || typeof status !== 'string') {
+        const error = new Error('Status is required');
+        error.statusCode = 400;
+        return next(error);
+      }
+
+      const normalizedStatus = status.trim().toUpperCase();
+      const VALID_ORDER_STATUSES = ['PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
+
+      if (!VALID_ORDER_STATUSES.includes(normalizedStatus)) {
+        const error = new Error(`Invalid status. Allowed values: ${VALID_ORDER_STATUSES.join(', ')}`);
+        error.statusCode = 400;
+        return next(error);
+      }
+
+      // Check order existence and permissions
+      const existingOrder = await prisma.order.findUnique({
+        where: { id },
+        include: {
+          items: {
+            include: {
+              produce: {
+                select: {
+                  farmerId: true,
+                },
+              },
+            },
+          },
+          retailer: true,
+        },
+      });
+
+      if (!existingOrder) {
+        const error = new Error('Order not found');
+        error.statusCode = 404;
+        return next(error);
+      }
+
+      if (role === 'RETAILER') {
+        if (existingOrder.retailer?.userId !== userId) {
+          const error = new Error('Access denied: You are not authorized to update this order');
+          error.statusCode = 403;
+          return next(error);
+        }
+        if (normalizedStatus !== 'CANCELLED') {
+          const error = new Error('Retailers can only cancel orders');
+          error.statusCode = 403;
+          return next(error);
+        }
+      } else if (role === 'FARMER') {
+        const farmer = await prisma.farmer.findUnique({
+          where: { userId },
+        });
+        if (!farmer) {
+          const error = new Error('Farmer profile not found');
+          error.statusCode = 404;
+          return next(error);
+        }
+        const hasFarmerProduce = existingOrder.items.some(
+          (item) => item.produce?.farmerId === farmer.id
+        );
+        if (!hasFarmerProduce) {
+          const error = new Error('Access denied: You are not authorized to update this order');
+          error.statusCode = 403;
+          return next(error);
+        }
+      } else if (role !== 'ADMIN') {
+        const error = new Error('Access denied: Insufficient permissions');
+        error.statusCode = 403;
+        return next(error);
+      }
+
+      const updatedOrder = await prisma.order.update({
+        where: { id },
+        data: { status: normalizedStatus },
+        include: {
+          items: {
+            include: {
+              produce: {
+                select: {
+                  id: true,
+                  name: true,
+                  unit: true,
+                  price: true,
+                  imageUrl: true,
+                },
+              },
+            },
+          },
+          retailer: {
+            include: {
+              user: {
+                select: {
+                  name: true,
+                  email: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: `Order status updated to ${normalizedStatus}`,
+        data: updatedOrder,
       });
     } catch (error) {
       next(error);

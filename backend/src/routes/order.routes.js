@@ -16,4 +16,7 @@ router.get('/', (req, res, next) => orderController.getOrders(req, res, next));
 // Get specific order details by ID
 router.get('/:id', (req, res, next) => orderController.getOrderById(req, res, next));
 
+// Update order status (Farmers can progress orders, Retailers can cancel)
+router.patch('/:id/status', (req, res, next) => orderController.updateOrderStatus(req, res, next));
+
 module.exports = router;

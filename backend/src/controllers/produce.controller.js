@@ -242,7 +242,9 @@ const getProduces = async (req, res, next) => {
     // -------------------------
     // Status filter
     // -------------------------
-    if (status) {
+    if (status && status.trim().toUpperCase() === 'ALL') {
+      // Return produces across all statuses without filter
+    } else if (status) {
       const normalizedStatus = status.trim().toUpperCase();
 
       if (!VALID_STATUSES.includes(normalizedStatus)) {
