@@ -171,7 +171,7 @@ async function runTests() {
     }, {
       Authorization: `Bearer ${farmerToken}`,
     });
-    recordTest('9. Farmer PATCH /api/produce/:id updates price and quantity', 
+    recordTest('9. Farmer PATCH /api/produce/:id updates price and quantity',
       updateRes.status === 200 && 
       updateRes.body.data?.price === 49.99 &&
       updateRes.body.data?.quantity === 120

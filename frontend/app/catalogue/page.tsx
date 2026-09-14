@@ -1,10 +1,13 @@
 'use client';
 
-import React, { useState, useEffect, useTransition } from 'react';
+import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import ProductCard from '../../components/ProductCard';
 import Pagination from '../../components/Pagination';
 import OrderModal from '../../components/OrderModal';
-import { getProduces, Produce, ProduceCategory } from '../../lib/api';
+import { getProduces, Produce } from '../../lib/api';
+import { useAuth } from '../../context/AuthContext';
+import { useCart } from '../../context/CartContext';
 
 const CATEGORIES: { label: string; value: string; icon: string }[] = [
   { label: 'All Produce', value: 'ALL', icon: '🧺' },
@@ -17,6 +20,9 @@ const CATEGORIES: { label: string; value: string; icon: string }[] = [
 ];
 
 export default function RetailerCataloguePage() {
+  const { role, user } = useAuth();
+  const isFarmer = (role || user?.role) === 'FARMER';
+
   const [produces, setProduces] = useState<Produce[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -27,12 +33,11 @@ export default function RetailerCataloguePage() {
   const [sortBy, setSortBy] = useState<'createdAt' | 'price' | 'quantity' | 'name'>('createdAt');
   const [order, setOrder] = useState<'asc' | 'desc'>('desc');
   const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Selected produce for quick order modal
   const [selectedProduce, setSelectedProduce] = useState<Produce | null>(null);
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
-
-  const [, startTransition] = useTransition();
 
   const loadProduces = async (
     page: number,
@@ -43,6 +48,7 @@ export default function RetailerCataloguePage() {
     sortOrder: 'asc' | 'desc'
   ) => {
     setIsLoading(true);
+    setErrorMessage(null);
     try {
       const res = await getProduces({
         page,
@@ -54,12 +60,17 @@ export default function RetailerCataloguePage() {
         order: sortOrder,
       });
 
+      // The API applies availability filters before pagination, keeping page counts accurate.
       setProduces(res.produces);
       setTotalPages(res.pagination.totalPages);
       setTotalCount(res.pagination.total);
       setCurrentPage(res.pagination.page);
     } catch (err) {
       console.error('Failed to load produces:', err);
+      setProduces([]);
+      setTotalPages(1);
+      setTotalCount(0);
+      setErrorMessage(err instanceof Error ? err.message : 'Unable to load the catalogue. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -85,13 +96,88 @@ export default function RetailerCataloguePage() {
     window.scrollTo({ top: 300, behavior: 'smooth' });
   };
 
+  const { addItem } = useCart();
+
   const handleQuickOrder = (prod: Produce) => {
-    setSelectedProduce(prod);
-    setIsOrderModalOpen(true);
+    if (isFarmer) return;
+    addItem(prod);
   };
 
   return (
     <div className="main-content">
+      {/* Farmer Role Notice */}
+      {isFarmer && (
+        <div
+          style={{
+            backgroundColor: '#f0fdf4',
+            border: '1px solid #bbf7d0',
+            borderRadius: '14px',
+            padding: '1rem 1.25rem',
+            marginBottom: '1.5rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '1rem',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+            <span style={{ fontSize: '1.4rem' }}>👨‍🌾</span>
+            <div>
+              <strong style={{ color: '#166534', fontSize: '0.95rem', display: 'block' }}>
+                Farmer Market View
+              </strong>
+              <span style={{ color: '#15803d', fontSize: '0.85rem' }}>
+                You are signed in as a verified farmer. You can monitor live market rates and listings. Retailer wholesale ordering is restricted to retailer accounts.
+              </span>
+            </div>
+          </div>
+          <Link
+            href="/farmer/dashboard"
+            style={{
+              padding: '0.5rem 1rem',
+              backgroundColor: '#10b981',
+              color: '#ffffff',
+              borderRadius: '8px',
+              fontSize: '0.85rem',
+              fontWeight: 700,
+              textDecoration: 'none',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Manage My Produce →
+          </Link>
+        </div>
+      )}
+
+      {errorMessage && (
+        <div
+          role="alert"
+          style={{
+            backgroundColor: '#fef2f2',
+            border: '1px solid #fecaca',
+            borderRadius: '10px',
+            color: '#b91c1c',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '1rem',
+            marginBottom: '1rem',
+            padding: '0.85rem 1rem',
+          }}
+        >
+          <span>Unable to load the catalogue: {errorMessage}</span>
+          <button
+            type="button"
+            onClick={() => setErrorMessage(null)}
+            aria-label="Dismiss catalogue error"
+            style={{ background: 'none', border: 0, color: '#b91c1c', cursor: 'pointer', fontSize: '1.2rem' }}
+          >
+            &times;
+          </button>
+        </div>
+      )}
       {/* Header Banner */}
       <section
         style={{
@@ -454,12 +540,11 @@ export default function RetailerCataloguePage() {
           </div>
         ) : (
           /* Product Grid */
-      <div className="catalogue-grid"> 
-     {produces.map((produce) => ( 
-      <ProductCard key={produce.id} produce={produce} onOrderClick={handleQuickOrder} /> 
-       ))} 
-      </div>
-
+          <div className="catalogue-grid">
+            {produces.map((produce) => (
+              <ProductCard key={produce.id} produce={produce} onOrderClick={handleQuickOrder} />
+            ))}
+          </div>
         )}
 
         {/* Pagination Bar */}
@@ -472,15 +557,17 @@ export default function RetailerCataloguePage() {
         )}
       </section>
 
-      {/* Order Modal */}
-      <OrderModal
-        produce={selectedProduce}
-        isOpen={isOrderModalOpen}
-        onClose={() => {
-          setIsOrderModalOpen(false);
-          setSelectedProduce(null);
-        }}
-      />
+      {/* Order Modal (Retailers only) */}
+      {!isFarmer && (
+        <OrderModal
+          produce={selectedProduce}
+          isOpen={isOrderModalOpen}
+          onClose={() => {
+            setIsOrderModalOpen(false);
+            setSelectedProduce(null);
+          }}
+        />
+      )}
     </div>
   );
 }

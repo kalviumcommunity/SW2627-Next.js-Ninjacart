@@ -127,8 +127,8 @@ class InventoryService {
 
       return createdOrder;
     }, {
-      maxWait: 5000,
-      timeout: 10000,
+      maxWait: 15000,
+      timeout: 30000,
     });
   }
 }

@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { Produce } from "../lib/api";
+import { useAuth } from "../context/AuthContext";
 
 interface ProductCardProps {
   produce: Produce;
@@ -13,6 +14,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   produce,
   onOrderClick,
 }) => {
+  const { role, user } = useAuth();
+  const isFarmer = (role || user?.role) === "FARMER";
   const [imgError, setImgError] = useState(false);
 
   const isAvailable =
@@ -39,35 +42,31 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
   return (
     <div
-      className={`group relative flex flex-col overflow-hidden rounded-2xl border bg-white shadow-sm transition-all duration-300 hover:shadow-md ${
-        isAvailable
-          ? "border-gray-200 hover:-translate-y-1 hover:border-emerald-300"
-          : "border-gray-200 bg-gray-50/80 opacity-80"
-      }`}
+      className={`product-card ${!isAvailable ? "card-unavailable" : ""}`}
     >
       {/* Product Image & Badges */}
-      <div className="relative aspect-[4/3] w-full overflow-hidden bg-gray-100">
+      <div className="product-card-image-wrap">
         <img
           src={imageUrl}
           alt={produce.name}
           onError={() => setImgError(true)}
-          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          className="product-card-image"
           loading="lazy"
         />
 
         {/* Category Tag */}
-        <span className="absolute left-3 top-3 rounded-full bg-white/90 px-3 py-1 text-xs font-bold uppercase tracking-wider text-gray-700 shadow-sm backdrop-blur-md">
+        <span className="product-card-badge-category">
           {produce.category}
         </span>
 
         {/* Stock Status Badge */}
         <span
-          className={`absolute right-3 top-3 rounded-full px-2.5 py-1 text-xs font-bold uppercase tracking-wide shadow-sm ${
+          className={`product-card-badge-status ${
             !isAvailable
-              ? "bg-red-600 text-white"
+              ? "status-out-of-stock"
               : isLowStock
-              ? "bg-amber-500 text-white"
-              : "bg-emerald-600 text-white"
+              ? "status-low-stock"
+              : "status-available"
           }`}
         >
           {!isAvailable
@@ -79,8 +78,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
         {/* Sold Out Overlay */}
         {!isAvailable && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/30 backdrop-blur-[1px]">
-            <span className="rounded-full bg-red-600 px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-white shadow-lg">
+          <div className="product-card-sold-out-overlay">
+            <span className="product-card-sold-out-pill">
               Out of Stock
             </span>
           </div>
@@ -88,31 +87,30 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       </div>
 
       {/* Card Content */}
-      <div className="flex flex-1 flex-col p-5">
+      <div className="product-card-body">
         {/* Farmer Attribution */}
-        <p className="mb-1 text-xs font-medium text-emerald-700">
+        <p className="product-card-farmer">
           🌾 Grown by {farmerName}
           {farmerLocation ? ` • ${farmerLocation}` : ""}
         </p>
 
         {/* Product Title */}
-        <h3 className="line-clamp-1 text-base font-bold text-gray-900 transition-colors group-hover:text-emerald-700">
+        <h3 className="product-card-title">
           <Link
             href={`/catalogue/${produce.id}`}
-            className="hover:underline"
           >
             {produce.name}
           </Link>
         </h3>
 
         {/* Pricing & Stock */}
-        <div className="mt-4 flex items-baseline justify-between">
+        <div className="product-card-pricing-row">
           <div>
-            <span className="text-2xl font-black text-gray-900">
+            <span className="product-card-price">
               ₹{produce.price}
             </span>
 
-            <span className="text-xs font-medium text-gray-500">
+            <span className="product-card-unit">
               {" "}
               / {produce.unit || "kg"}
             </span>
@@ -122,24 +120,20 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           <div>
             {isAvailable ? (
               <span
-                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${
-                  isLowStock
-                    ? "border-amber-200 bg-amber-50 text-amber-700"
-                    : "border-emerald-200/60 bg-emerald-50 text-emerald-700"
+                className={`product-card-stock-pill ${
+                  isLowStock ? "pill-low-stock" : "pill-available"
                 }`}
               >
                 <span
-                  className={`h-1.5 w-1.5 animate-pulse rounded-full ${
-                    isLowStock
-                      ? "bg-amber-500"
-                      : "bg-emerald-500"
+                  className={`stock-pulse-dot ${
+                    isLowStock ? "dot-low-stock" : "dot-available"
                   }`}
                 />
 
                 {produce.quantity} {produce.unit || "kg"} left
               </span>
             ) : (
-              <span className="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-bold text-red-600">
+              <span className="product-card-stock-pill pill-out-of-stock">
                 Sold Out
               </span>
             )}
@@ -149,56 +143,61 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         {/* Minimum Order */}
         {produce.minOrderQuantity &&
           produce.minOrderQuantity > 1 && (
-            <div className="mt-1 text-xs text-gray-400">
+            <div className="product-card-min-order">
               Min order: {produce.minOrderQuantity}{" "}
               {produce.unit || "kg"}
             </div>
           )}
 
         {/* Card Actions */}
-        <div className="mt-5 flex items-center gap-2 border-t border-gray-100 pt-3">
+        <div className="product-card-actions">
           {/* Details */}
           <Link
             href={`/catalogue/${produce.id}`}
-            className="flex-1 rounded-xl border border-gray-200 bg-white px-3 py-2 text-center text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 active:scale-[0.98]"
+            className="product-card-btn-details"
+            style={isFarmer ? { width: "100%", textAlign: "center" } : undefined}
           >
-            Details
+            {isFarmer ? "View Details" : "Details"}
           </Link>
 
-          {/* Add to Cart / Unavailable */}
-          {isAvailable ? (
-            <button
-              type="button"
-              onClick={() =>
-                onOrderClick && onOrderClick(produce)
-              }
-              className="flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-emerald-700 hover:shadow active:scale-[0.98]"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-4 w-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
+          {/* Add to Cart / Unavailable (Retailers and Guests only) */}
+          {!isFarmer && (
+            isAvailable ? (
+              <button
+                type="button"
+                onClick={() =>
+                  onOrderClick && onOrderClick(produce)
+                }
+                className="product-card-btn-order"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
-                />
-              </svg>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="product-card-cart-icon"
+                  width={17}
+                  height={17}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
+                  />
+                </svg>
 
-              Add to Cart
-            </button>
-          ) : (
-            <button
-              type="button"
-              disabled
-              className="flex flex-1 cursor-not-allowed items-center justify-center rounded-xl bg-gray-100 px-3 py-2 text-sm font-semibold text-gray-400"
-            >
-              Unavailable
-            </button>
+                Add to Cart
+              </button>
+            ) : (
+              <button
+                type="button"
+                disabled
+                className="product-card-btn-disabled"
+              >
+                Unavailable
+              </button>
+            )
           )}
         </div>
       </div>

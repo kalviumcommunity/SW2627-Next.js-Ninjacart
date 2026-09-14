@@ -24,8 +24,7 @@ const authenticate = (req, res, next) => {
 
   const token = parts[1].trim();
 
-  // Ensure JWT_SECRET with fallback for dev/testing
-  const jwtSecret = process.env.JWT_SECRET || 'dev_jwt_secret_ninjacart_fallback_2026';
+  const jwtSecret = process.env.JWT_SECRET;
   if (!jwtSecret) {
     console.error('FATAL: JWT_SECRET environment variable is not configured.');
     return res.status(500).json({

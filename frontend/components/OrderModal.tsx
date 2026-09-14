@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { createOrder, Product, Produce } from '@/lib/api';
+import { useAuth } from '@/context/AuthContext';
 
 interface OrderModalProps {
   product?: Product;
@@ -15,6 +17,9 @@ interface OrderModalProps {
 const fieldStyle = { width: '100%', padding: '0.65rem 0.85rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', fontFamily: 'inherit' };
 
 export default function OrderModal({ product, quantity: initialQuantity = 1, isOpen, onClose, onConfirmSuccess, produce: catalogueProduce }: OrderModalProps) {
+  const { role, user } = useAuth();
+  const isFarmer = (role || user?.role) === 'FARMER';
+
   const currentProduct = product || catalogueProduce;
   const [quantity, setQuantity] = useState(initialQuantity);
   const [deliveryAddress, setDeliveryAddress] = useState('');
@@ -43,6 +48,10 @@ export default function OrderModal({ product, quantity: initialQuantity = 1, isO
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (isFarmer) {
+      setError('Wholesale ordering is only available to registered retailer accounts.');
+      return;
+    }
     if (!isQuantityValid) {
       setError(`Quantity must be between ${minQty} and ${maxQty} ${currentProduct.unit}.`);
       return;
@@ -58,7 +67,14 @@ export default function OrderModal({ product, quantity: initialQuantity = 1, isO
       setShowSuccess(true);
       onConfirmSuccess?.(result);
     } catch (submissionError) {
-      setError(submissionError instanceof Error ? submissionError.message : 'Failed to place order. Please try again.');
+      const rawMsg = submissionError instanceof Error ? submissionError.message : '';
+      if (rawMsg.toLowerCase().includes('forbidden') || rawMsg.toLowerCase().includes('permission')) {
+        setError('Only registered retailers can place wholesale orders.');
+      } else if (rawMsg.toLowerCase().includes('unauthorized') || rawMsg.toLowerCase().includes('token')) {
+        setError('Please sign in as a retailer to place wholesale orders.');
+      } else {
+        setError(rawMsg || 'Failed to place order. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -80,7 +96,62 @@ export default function OrderModal({ product, quantity: initialQuantity = 1, isO
     <div style={overlayStyle} onClick={closeModal}>
       <div style={modalStyle} onClick={(event) => event.stopPropagation()}>
         <button type="button" onClick={closeModal} disabled={isLoading} aria-label="Close order dialog" style={{ float: 'right', border: 0, backgroundColor: '#f1f5f9', borderRadius: '50%', width: '32px', height: '32px', color: '#64748b', fontSize: '1.2rem' }}>&times;</button>
-        {showSuccess ? (
+        {isFarmer ? (
+          <div style={{ textAlign: 'center', padding: '1.5rem 0' }}>
+            <div
+              style={{
+                width: '64px',
+                height: '64px',
+                borderRadius: '50%',
+                backgroundColor: '#fef3c7',
+                color: '#d97706',
+                fontSize: '2rem',
+                display: 'grid',
+                placeItems: 'center',
+                margin: '0 auto 1.25rem',
+              }}
+            >
+              🔒
+            </div>
+            <h2 style={{ color: '#0f172a', marginBottom: '0.5rem', fontSize: '1.35rem' }}>
+              Retailer Account Required
+            </h2>
+            <p style={{ color: '#64748b', marginBottom: '1.5rem', fontSize: '0.925rem', lineHeight: 1.6 }}>
+              Wholesale purchasing on Ninjacart is reserved exclusively for registered Retailers. As a Farmer, you can manage your own listings in the Farmer Portal.
+            </p>
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
+              <button
+                type="button"
+                onClick={closeModal}
+                style={{
+                  ...buttonStyle,
+                  backgroundColor: '#ffffff',
+                  color: '#334155',
+                  border: '1px solid #cbd5e1',
+                  cursor: 'pointer',
+                  flex: 1,
+                }}
+              >
+                Close
+              </button>
+              <Link
+                href="/farmer/dashboard"
+                style={{
+                  ...buttonStyle,
+                  backgroundColor: '#10b981',
+                  textAlign: 'center',
+                  textDecoration: 'none',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flex: 1.2,
+                }}
+              >
+                Go to Farmer Portal
+              </Link>
+            </div>
+          </div>
+        ) : showSuccess ? (
           <div style={{ textAlign: 'center', padding: '1.5rem 0' }}><div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: '#dcfce7', color: '#16a34a', fontSize: '2rem', display: 'grid', placeItems: 'center', margin: '0 auto 1.25rem' }}>✓</div><h2 style={{ color: '#0f172a', marginBottom: '0.5rem' }}>Order Placed Successfully!</h2><p style={{ color: '#64748b', marginBottom: '1.5rem' }}>Your order for <strong>{quantity} {currentProduct.unit}</strong> of <strong>{currentProduct.name}</strong> has been received.</p><div style={{ backgroundColor: '#f8fafc', padding: '1rem', borderRadius: '12px', marginBottom: '1.5rem', textAlign: 'left' }}><div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>Total Billed:</span><strong style={{ color: '#10b981' }}>₹{totalPrice}</strong></div><div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>Status:</span><strong style={{ color: '#0284c7' }}>CONFIRMED</strong></div></div><button type="button" onClick={closeModal} style={buttonStyle}>Done</button></div>
         ) : (
           <form onSubmit={handleSubmit}>

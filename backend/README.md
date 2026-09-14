@@ -30,7 +30,7 @@ Backend requires environment variables to connect to PostgreSQL and sign JWT aut
    FRONTEND_URL="http://localhost:3000"
    ```
 
-> 💡 **Tip:** If running PostgreSQL locally with default settings on macOS/Linux/Windows, the database URL is typically:  
+> 💡 **Tip:** If running PostgreSQL locally with default settings on macOS/Linux/Windows, the database URL is typically:
 > `postgresql://postgres:postgres@localhost:5432/ninjacart?schema=public`
 
 ---
@@ -66,7 +66,7 @@ npm run dev
 # Production start
 npm start
 ```
-The server will start on `http://localhost:5000`.  
+The server will start on `http://localhost:5000`.
 Health check endpoint: `http://localhost:5000/api/health`.
 
 ---
