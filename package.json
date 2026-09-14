@@ -1,0 +1,23 @@
+{
+  "name": "ninjacart",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Ninjacart Produce Catalogue System",
+  "scripts": {
+    "dev": "concurrently -n backend,frontend -c green,cyan \"npm --prefix backend run dev\" \"npm --prefix frontend run dev\"",
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "install:all": "npm install && npm --prefix backend install && npm --prefix frontend install",
+    "start": "npm --prefix backend start",
+    "test": "npm --prefix backend run test:all",
+    "test:catalogue": "npm --prefix backend run test:catalogue",
+    "test:concurrency": "npm --prefix backend run test:concurrency",
+    "seed": "npm --prefix backend run seed",
+    "seed:bulk": "npm --prefix backend run seed:bulk",
+    "prisma:generate": "npm --prefix backend run prisma:generate",
+    "prisma:migrate": "npm --prefix backend run prisma:migrate"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.5"
+  }
+}
