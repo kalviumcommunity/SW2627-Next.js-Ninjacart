@@ -1,3 +1,17 @@
+/**
+ * ============================================================================
+ * Retailer Order History & Tracking (Implemented by Jovab)
+ * ============================================================================
+ * Purpose: Allows wholesale buyers (Retailers) to review past purchases and track order status.
+ *
+ * Flow:
+ * 1. Validates that current user is authenticated as a Retailer (guards against farmers/guests).
+ * 2. Calls getOrders() API -> sends GET /api/orders with JWT Bearer token.
+ * 3. Backend filters orders matching the retailer profile and includes nested items & produce images.
+ * 4. Renders order cards displaying order ID, status badges (PENDING, CONFIRMED, DELIVERED),
+ *    itemized breakdown, and total order amounts.
+ */
+
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -38,6 +52,7 @@ export default function OrdersPage() {
   const [isLoadingOrders, setIsLoadingOrders] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Fetch orders placed by this authenticated retailer from backend
   useEffect(() => {
     async function loadOrdersData() {
       if (!isAuthenticated || isFarmer) {
@@ -368,6 +383,36 @@ export default function OrdersPage() {
                         ₹{order.totalAmount.toFixed(2)}
                       </strong>
                     </div>
+
+                    {(order.status === "PENDING" || order.status === "CONFIRMED") && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (!confirm("Are you sure you want to cancel this order?")) return;
+                          try {
+                            const { updateOrderStatus } = await import("@/lib/api");
+                            await updateOrderStatus(order.id, "CANCELLED");
+                            setOrders((prev) =>
+                              prev.map((o) => (o.id === order.id ? { ...o, status: "CANCELLED" } : o))
+                            );
+                          } catch (err: any) {
+                            alert(err?.message || "Failed to cancel order");
+                          }
+                        }}
+                        style={{
+                          padding: "0.35rem 0.75rem",
+                          backgroundColor: "#fef2f2",
+                          border: "1px solid #fecaca",
+                          color: "#dc2626",
+                          borderRadius: "6px",
+                          fontSize: "0.75rem",
+                          fontWeight: 700,
+                          cursor: "pointer",
+                        }}
+                      >
+                        Cancel Order
+                      </button>
+                    )}
                   </div>
                 </div>
 

@@ -1,3 +1,16 @@
+/**
+ * ============================================================================
+ * Wholesale Cart Context (Implemented by Jovab)
+ * ============================================================================
+ * Purpose: Global shopping cart state management for wholesale buyers (Retailers).
+ *
+ * Flow:
+ * 1. Retailer browses the catalogue and adds fresh produce items to cart.
+ * 2. Validates and clamps quantity between minOrderQuantity and available produce stock.
+ * 3. Automatically persists cart items to browser localStorage (key: 'ninjacart_cart_items').
+ * 4. Triggers the slide-over CartDrawer for multi-item wholesale checkout.
+ */
+
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
@@ -40,7 +53,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Load from localStorage on mount
+  // Restore existing cart items from browser localStorage on initial client mount
   useEffect(() => {
     try {
       const stored = localStorage.getItem(CART_STORAGE_KEY);
@@ -69,6 +82,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const closeCart = useCallback(() => setIsCartOpen(false), []);
   const toggleCart = useCallback(() => setIsCartOpen((prev) => !prev), []);
 
+  // Add item to cart with wholesale safety checks:
+  // - Enforces minOrderQuantity threshold so retail buyers don't order below farmer's minimum.
+  // - Clamps quantity so user cannot add more than the currently available stock.
   const addItem = useCallback((produce: Produce, requestedQuantity?: number) => {
     const minQty = produce.minOrderQuantity || 1;
     const maxQty = produce.quantity;

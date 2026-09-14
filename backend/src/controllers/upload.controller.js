@@ -38,9 +38,20 @@ const getUploadSignature = async (req, res, next) => {
 /**
  * Upload an image file directly via server buffer to Cloudinary
  * POST /api/upload/image
+ *
+ * Flow:
+ * 1. Multer stores the incoming multipart image in req.file.buffer.
+ * 2. Creates a Cloudinary upload stream pointing to folder 'ninjacart/produce'.
+ * 3. Applies automated image optimizations:
+ *    - width/height limit 1200x1200px
+ *    - quality: auto:good (reduces payload without visual degradation)
+ *    - fetch_format: auto (serves WebP/AVIF to supported browsers)
+ * 4. Streams the buffer to Cloudinary CDN servers.
+ * 5. Returns HTTP 200 with permanent secure_url and public_id.
  */
 const uploadImage = async (req, res, next) => {
   try {
+    // Check if Multer successfully intercepted and parsed the image file
     if (!req.file) {
       return res.status(400).json({
         success: false,
@@ -50,7 +61,7 @@ const uploadImage = async (req, res, next) => {
 
     const folder = req.body.folder || 'ninjacart/produce';
 
-    // Upload file buffer using Cloudinary upload stream
+    // Stream file buffer directly to Cloudinary CDN
     const uploadResult = await new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         {
@@ -70,9 +81,11 @@ const uploadImage = async (req, res, next) => {
         }
       );
 
+      // Pipe in-memory buffer into the Cloudinary upload stream
       uploadStream.end(req.file.buffer);
     });
 
+    // Return both top-level and data fields so any frontend client works reliably
     return res.status(200).json({
       success: true,
       url: uploadResult.secure_url,
@@ -87,6 +100,7 @@ const uploadImage = async (req, res, next) => {
       },
     });
   } catch (error) {
+    // Return 502 Bad Gateway if the external Cloudinary service fails
     console.error('[UploadController Error]:', error.message || error);
     return res.status(502).json({
       success: false,

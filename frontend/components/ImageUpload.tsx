@@ -50,6 +50,17 @@ const ALLOWED_MIME_TYPES = [
 ];
 const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
 
+/**
+ * ImageUpload Component
+ *
+ * Flow:
+ * 1. Farmer selects or drops an image file.
+ * 2. Component validates format (JPEG/PNG/WebP/GIF) and size (<= 5MB).
+ * 3. Shows an immediate local preview using URL.createObjectURL.
+ * 4. Calls uploadImage() API -> sends multipart/form-data to POST /api/upload/image.
+ * 5. Backend uploads file to Cloudinary and returns secure URL + publicId.
+ * 6. onUploadSuccess callback passes the permanent Cloudinary URL to the parent page.
+ */
 export default function ImageUpload({
   onUploadSuccess,
   onImageUpload,
@@ -58,11 +69,14 @@ export default function ImageUpload({
   initialImageUrl,
   disabled = false,
 }: ImageUploadProps) {
+  // Local blob URL for instant preview before/during upload
   const [preview, setPreview] = useState<string | null>(initialImageUrl || null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [fileSize, setFileSize] = useState<string | null>(null);
+  // Track active upload to Cloudinary (disables parent submit button)
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [uploadSuccess, setUploadSuccess] = useState<boolean>(Boolean(initialImageUrl));
+  // Stores the permanent Cloudinary URL and publicId once upload succeeds
   const [uploadedResult, setUploadedResult] = useState<UploadResult | null>(
     initialImageUrl ? { url: initialImageUrl, publicId: "" } : null
   );
@@ -71,7 +85,7 @@ export default function ImageUpload({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const previewUrlRef = useRef<string | null>(null);
 
-  // Clean up object URLs on unmount to prevent memory leaks
+  // Clean up object URLs on unmount to prevent browser memory leaks
   useEffect(() => {
     return () => {
       if (previewUrlRef.current && previewUrlRef.current.startsWith("blob:")) {
@@ -86,11 +100,16 @@ export default function ImageUpload({
     return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
   };
 
+  /**
+   * Main upload handler:
+   * Called whenever a user selects a file via file browser or drag-and-drop.
+   * Validates file, generates preview, and sends to Cloudinary via backend proxy.
+   */
   const handleFile = async (file: File) => {
     // Reset previous error
     setError(null);
 
-    // 1. Validate file type
+    // 1. Validate file type (only allow image MIME types)
     if (!ALLOWED_MIME_TYPES.includes(file.type)) {
       const err = "Invalid file type. Only JPEG, PNG, WebP, and GIF images are allowed.";
       setError(err);
@@ -99,7 +118,7 @@ export default function ImageUpload({
       return;
     }
 
-    // 2. Validate file size (<= 5MB)
+    // 2. Validate file size (<= 5MB to match backend Multer limit)
     if (file.size > MAX_FILE_SIZE_BYTES) {
       const err = `File size exceeds 5MB limit (${formatFileSize(file.size)}). Please select a smaller image.`;
       setError(err);
@@ -113,7 +132,7 @@ export default function ImageUpload({
       URL.revokeObjectURL(previewUrlRef.current);
     }
 
-    // Create immediate local preview
+    // Create immediate local preview so the user sees their image instantly
     const localBlobUrl = URL.createObjectURL(file);
     previewUrlRef.current = localBlobUrl;
     setPreview(localBlobUrl);
@@ -129,6 +148,8 @@ export default function ImageUpload({
     setIsUploading(true);
 
     try {
+      // Send the selected image as multipart/form-data to the backend.
+      // The backend uploads the file to Cloudinary and returns the permanent image URL.
       const result = await uploadImage(file);
 
       if (!result?.url || !result?.publicId) {
@@ -144,7 +165,7 @@ export default function ImageUpload({
       setUploadSuccess(true);
       setError(null);
 
-      // Return real Cloudinary URL & publicId to parent
+      // Return real Cloudinary URL & publicId to parent form (add-produce/page.tsx)
       onUploadSuccess?.(uploadData);
       onImageUpload?.(uploadData);
     } catch (uploadErr) {

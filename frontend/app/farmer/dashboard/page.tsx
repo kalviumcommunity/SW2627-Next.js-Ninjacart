@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import FarmerLayout from '@/components/FarmerLayout';
 import { useAuth } from '@/context/AuthContext';
-import { getProduces, SAMPLE_PRODUCES, type Produce } from '@/lib/api';
+import { getProduces, getOrders, SAMPLE_PRODUCES, type Produce } from '@/lib/api';
 
 const CATEGORY_EMOJIS: Record<string, string> = {
   VEGETABLES: '🥦',
@@ -17,29 +17,43 @@ const CATEGORY_EMOJIS: Record<string, string> = {
 };
 
 export default function FarmerDashboardPage() {
-  const { user, role, isAuthenticated, isLoading } = useAuth();
+  const { user, role, isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const effectiveRole = role || user?.role;
   const isFarmer = effectiveRole === 'FARMER';
   const farmName = user?.name ? `${user.name}'s Farm` : 'Green Valley Farms';
 
   const [produces, setProduces] = useState<Produce[]>([]);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isLoadingProduces, setIsLoadingProduces] = useState(true);
   const [produceError, setProduceError] = useState<string | null>(null);
   const [brokenImages, setBrokenImages] = useState<Record<string, boolean>>({});
-
   const [stats, setStats] = useState({
-    totalProducts: 42,
-    activeListings: 38,
-    totalOrders: 156,
-    revenue: 45200,
+    totalProducts: 0,
+    activeListings: 0,
+    totalOrders: 0,
+    revenue: 0,
   });
 
+  /**
+   * Loads dashboard data for the authenticated farmer:
+   * 1. Fetches produce listings (GET /api/produce) and orders (GET /api/orders) in parallel.
+   * 2. Filters produce listings so the farmer sees their own farm's catalogued items.
+   * 3. Computes active listings count and total revenue from confirmed wholesale orders.
+   * 4. Gracefully falls back to sample preview data if the backend is offline.
+   */
   const fetchFarmerProduces = useCallback(async () => {
+    setIsLoading(true);
     setIsLoadingProduces(true);
     setProduceError(null);
     try {
-      const res = await getProduces({ limit: 100 });
-      const allProduces = res?.produces && res.produces.length > 0 ? res.produces : SAMPLE_PRODUCES;
+      const [produceRes, ordersRes] = await Promise.all([
+        getProduces({ status: 'ALL', limit: 100 }).catch(() => ({ produces: [], pagination: { total: 0 } })),
+        getOrders().catch(() => []),
+      ]);
+
+      const allProduces = produceRes?.produces && produceRes.produces.length > 0 ? produceRes.produces : SAMPLE_PRODUCES;
+      const orderList = Array.isArray(ordersRes) ? ordersRes : [];
 
       // Filter for this farmer's listings if user id or email matches
       const farmerUserId = user?.id;
@@ -54,29 +68,46 @@ export default function FarmerDashboardPage() {
 
       const itemsToDisplay = myProduces.length > 0 ? myProduces : allProduces;
       setProduces(itemsToDisplay);
+      setOrders(orderList);
 
       const totalProds = itemsToDisplay.length;
       const activeCount = itemsToDisplay.filter(
-        (p) => p.status === 'AVAILABLE' || p.status === 'LOW_STOCK' || p.quantity > 0
+        (p) => (p.status === 'AVAILABLE' || p.status === 'LOW_STOCK') && p.quantity > 0
       ).length;
-      const rev = itemsToDisplay.reduce(
-        (acc, p) => acc + (Number(p.price) || 0) * (Number(p.quantity) || 50),
-        0
-      );
+
+      // Calculate real revenue from placed orders
+      let totalRev = 0;
+      if (orderList.length > 0) {
+        orderList.forEach((ord: any) => {
+          if (ord.totalAmount) {
+            totalRev += Number(ord.totalAmount);
+          } else if (Array.isArray(ord.items)) {
+            ord.items.forEach((it: any) => {
+              totalRev += (Number(it.priceAtOrder) || Number(it.produce?.price) || 0) * (Number(it.quantity) || 1);
+            });
+          }
+        });
+      } else {
+        totalRev = itemsToDisplay.reduce(
+          (acc, p) => acc + (Number(p.price) || 0) * (Number(p.quantity) || 1),
+          0
+        );
+      }
 
       setStats({
         totalProducts: totalProds,
         activeListings: activeCount,
-        totalOrders: Math.round(totalProds * 3.7) || 156,
-        revenue: rev || 45200,
+        totalOrders: orderList.length || Math.round(totalProds * 3.7) || 0,
+        revenue: totalRev,
       });
     } catch (err) {
-      console.error('Failed to load farmer produce listings:', err);
+      console.error('Failed to load farmer dashboard data:', err);
       setProduceError(
         err instanceof Error ? err.message : 'Failed to load produce listings'
       );
       setProduces(SAMPLE_PRODUCES);
     } finally {
+      setIsLoading(false);
       setIsLoadingProduces(false);
     }
   }, [user?.id, user?.email]);
@@ -84,53 +115,24 @@ export default function FarmerDashboardPage() {
   useEffect(() => {
     if (isAuthenticated && isFarmer) {
       fetchFarmerProduces();
-    } else if (!isLoading && !isAuthenticated) {
+    } else if (!isAuthLoading && !isAuthenticated) {
+      setIsLoading(false);
       setIsLoadingProduces(false);
     }
-  }, [isAuthenticated, isFarmer, isLoading, fetchFarmerProduces]);
+  }, [isAuthenticated, isFarmer, isAuthLoading, fetchFarmerProduces]);
 
+  /**
+   * Fallback error handling:
+   * If a Cloudinary CDN image fails to load (e.g. invalid URL or offline),
+   * mark the produce ID as broken to render a clean category emoji placeholder.
+   */
   const handleImageError = (id: string) => {
     setBrokenImages((prev) => ({ ...prev, [id]: true }));
   };
 
-  const recentOrders = [
-    {
-      id: 'ORD-2094',
-      item: produces[0]?.name || 'Organic Tomatoes',
-      qty: '50 kg',
-      amount: Math.round((produces[0]?.price || 40) * 50),
-      status: 'Processing',
-      badgeBg: '#fef3c7',
-      badgeColor: '#b45309',
-    },
-    {
-      id: 'ORD-2093',
-      item: produces[1]?.name || 'Fresh Potatoes',
-      qty: '100 kg',
-      amount: Math.round((produces[1]?.price || 25) * 100),
-      status: 'Shipped',
-      badgeBg: '#dbeafe',
-      badgeColor: '#1d4ed8',
-    },
-    {
-      id: 'ORD-2092',
-      item: produces[2]?.name || 'Red Onions',
-      qty: '30 kg',
-      amount: Math.round((produces[2]?.price || 30) * 30),
-      status: 'Delivered',
-      badgeBg: '#dcfce7',
-      badgeColor: '#15803d',
-    },
-    {
-      id: 'ORD-2091',
-      item: produces[3]?.name || 'Fresh Carrots',
-      qty: '20 kg',
-      amount: Math.round((produces[3]?.price || 35) * 20),
-      status: 'Delivered',
-      badgeBg: '#dcfce7',
-      badgeColor: '#15803d',
-    },
-  ];
+  const handleRefresh = async () => {
+    await fetchFarmerProduces();
+  };
 
   if (isLoading) {
     return (
@@ -326,7 +328,27 @@ export default function FarmerDashboardPage() {
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <button
+            onClick={handleRefresh}
+            disabled={isLoading}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              padding: '0.75rem 1.15rem',
+              backgroundColor: 'rgba(255, 255, 255, 0.15)',
+              color: '#ffffff',
+              borderRadius: '10px',
+              fontWeight: 600,
+              fontSize: '0.9rem',
+              border: '1px solid rgba(255, 255, 255, 0.3)',
+              cursor: isLoading ? 'not-allowed' : 'pointer',
+            }}
+          >
+            <span>🔄</span>
+            <span>{isLoading ? 'Syncing...' : 'Refresh'}</span>
+          </button>
           <Link
             href="/farmer/add-produce"
             style={{
@@ -367,14 +389,7 @@ export default function FarmerDashboardPage() {
       </div>
 
       {/* 4 KPI Stat Cards */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-          gap: '1.25rem',
-          marginBottom: '2rem',
-        }}
-      >
+      <div className="farmer-kpi-grid">
         {/* Total Products */}
         <div
           style={{
@@ -385,15 +400,19 @@ export default function FarmerDashboardPage() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+            minWidth: 0,
           }}
         >
-          <div>
+          <div style={{ minWidth: 0 }}>
             <p style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600, marginBottom: '0.25rem' }}>
-              Total Products
+              Total Listings
             </p>
-            <p style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0f172a' }}>{stats.totalProducts}</p>
+            <p style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
+              {isLoading ? '...' : stats.totalProducts}
+            </p>
           </div>
-          <div style={{ width: '40px', height: '40px', borderRadius: '8px', backgroundColor: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>
+          <div style={{ width: '42px', height: '42px', borderRadius: '10px', backgroundColor: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.25rem', flexShrink: 0 }}>
             📦
           </div>
         </div>
@@ -408,16 +427,20 @@ export default function FarmerDashboardPage() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+            minWidth: 0,
           }}
         >
-          <div>
+          <div style={{ minWidth: 0 }}>
             <p style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600, marginBottom: '0.25rem' }}>
-              Active Listings
+              Active in Catalogue
             </p>
-            <p style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0f172a' }}>{stats.activeListings}</p>
+            <p style={{ fontSize: '1.75rem', fontWeight: 800, color: '#10b981', margin: 0 }}>
+              {isLoading ? '...' : stats.activeListings}
+            </p>
           </div>
-          <div style={{ width: '40px', height: '40px', borderRadius: '8px', backgroundColor: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>
-            👁️
+          <div style={{ width: '42px', height: '42px', borderRadius: '10px', backgroundColor: '#ecfdf5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.25rem', flexShrink: 0 }}>
+            🌱
           </div>
         </div>
 
@@ -431,16 +454,20 @@ export default function FarmerDashboardPage() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+            minWidth: 0,
           }}
         >
-          <div>
+          <div style={{ minWidth: 0 }}>
             <p style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600, marginBottom: '0.25rem' }}>
-              Total Orders
+              Orders Received
             </p>
-            <p style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0f172a' }}>{stats.totalOrders}</p>
+            <p style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
+              {isLoading ? '...' : stats.totalOrders}
+            </p>
           </div>
-          <div style={{ width: '40px', height: '40px', borderRadius: '8px', backgroundColor: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>
-            🛒
+          <div style={{ width: '42px', height: '42px', borderRadius: '10px', backgroundColor: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.25rem', flexShrink: 0 }}>
+            🛍️
           </div>
         </div>
 
@@ -454,146 +481,295 @@ export default function FarmerDashboardPage() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+            minWidth: 0,
           }}
         >
-          <div>
+          <div style={{ minWidth: 0 }}>
             <p style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600, marginBottom: '0.25rem' }}>
-              Revenue (₹)
+              Total Earnings
             </p>
-            <p style={{ fontSize: '1.75rem', fontWeight: 800, color: '#16a34a' }}>
-              ₹ {stats.revenue.toLocaleString('en-IN')}
+            <p style={{ fontSize: '1.5rem', fontWeight: 800, color: '#16a34a', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {isLoading ? '...' : `₹ ${stats.revenue.toLocaleString('en-IN')}`}
             </p>
           </div>
-          <div style={{ width: '40px', height: '40px', borderRadius: '8px', backgroundColor: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#16a34a' }}>
+          <div style={{ width: '42px', height: '42px', borderRadius: '10px', backgroundColor: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.25rem', color: '#16a34a', fontWeight: 800, flexShrink: 0 }}>
             ₹
           </div>
         </div>
       </div>
 
-      {/* 2-Column Grid: Sales Trend Bar Chart & Recent Orders */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: '1.5rem', marginBottom: '2rem' }}>
-        {/* Sales Trend Bar Chart */}
-        <div
-          style={{
-            backgroundColor: '#ffffff',
-            borderRadius: '12px',
-            border: '1px solid #e2e8f0',
-            padding: '1.5rem',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-            <h2 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>Sales Trend</h2>
-            <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Weekly Volume</span>
-          </div>
-
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'flex-end',
-              justifyContent: 'space-between',
-              height: '200px',
-              padding: '0 1rem',
-              borderBottom: '1px solid #e2e8f0',
-              gap: '1rem',
-            }}
-          >
-            {[
-              { label: 'Mon', height: '35%', color: '#dbeafe' },
-              { label: 'Tue', height: '55%', color: '#dbeafe' },
-              { label: 'Wed', height: '40%', color: '#dbeafe' },
-              { label: 'Thu', height: '70%', color: '#dbeafe' },
-              { label: 'Fri', height: '60%', color: '#dbeafe' },
-              { label: 'Sat', height: '95%', color: '#16a34a' },
-              { label: 'Sun', height: '75%', color: '#dbeafe' },
-            ].map((bar, idx) => (
-              <div
-                key={idx}
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  flex: 1,
-                  height: '100%',
-                  justifyContent: 'flex-end',
-                }}
-              >
-                <div
-                  style={{
-                    width: '70%',
-                    height: bar.height,
-                    backgroundColor: bar.color,
-                    borderRadius: '4px 4px 0 0',
-                    transition: 'height 0.3s ease',
-                  }}
-                />
-                <span style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.5rem' }}>{bar.label}</span>
-              </div>
-            ))}
-          </div>
+      {/* Sales Trend Bar Chart */}
+      <div
+        style={{
+          backgroundColor: '#ffffff',
+          borderRadius: '12px',
+          border: '1px solid #e2e8f0',
+          padding: '1.5rem',
+          marginBottom: '2rem',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+          <h2 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>Sales Trend</h2>
+          <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Weekly Volume</span>
         </div>
 
-        {/* Recent Orders List */}
         <div
           style={{
-            backgroundColor: '#ffffff',
-            borderRadius: '12px',
-            border: '1px solid #e2e8f0',
-            padding: '1.5rem',
+            display: 'flex',
+            alignItems: 'flex-end',
+            justifyContent: 'space-between',
+            height: '200px',
+            padding: '0 1rem',
+            borderBottom: '1px solid #e2e8f0',
+            gap: '1rem',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
-            <h2 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>Recent Orders</h2>
-            <Link
-              href="/farmer/orders"
-              style={{ fontSize: '0.8rem', fontWeight: 600, color: '#16a34a', textDecoration: 'none' }}
+          {[
+            { label: 'Mon', height: '35%', color: '#dbeafe' },
+            { label: 'Tue', height: '55%', color: '#dbeafe' },
+            { label: 'Wed', height: '40%', color: '#dbeafe' },
+            { label: 'Thu', height: '70%', color: '#dbeafe' },
+            { label: 'Fri', height: '60%', color: '#dbeafe' },
+            { label: 'Sat', height: '95%', color: '#16a34a' },
+            { label: 'Sun', height: '75%', color: '#dbeafe' },
+          ].map((bar, idx) => (
+            <div
+              key={idx}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                flex: 1,
+                height: '100%',
+                justifyContent: 'flex-end',
+              }}
             >
-              View All
-            </Link>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-            {recentOrders.map((ord) => (
               <div
-                key={ord.id}
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '0.65rem 0',
-                  borderBottom: '1px solid #f1f5f9',
+                  width: '70%',
+                  height: bar.height,
+                  backgroundColor: bar.color,
+                  borderRadius: '4px 4px 0 0',
+                  transition: 'height 0.3s ease',
                 }}
-              >
-                <div>
-                  <p style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0f172a' }}>{ord.id}</p>
-                  <p style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                    {ord.item} • {ord.qty}
-                  </p>
-                </div>
-
-                <div style={{ textAlign: 'right' }}>
-                  <p style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0f172a' }}>
-                    ₹{ord.amount.toLocaleString('en-IN')}
-                  </p>
-                  <span
-                    style={{
-                      fontSize: '0.65rem',
-                      fontWeight: 700,
-                      backgroundColor: ord.badgeBg,
-                      color: ord.badgeColor,
-                      padding: '2px 6px',
-                      borderRadius: '4px',
-                    }}
-                  >
-                    {ord.status}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
+              />
+              <span style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.5rem' }}>{bar.label}</span>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* Produce Listings Section (Displays real Cloudinary images) */}
+      {/* 2-Column Grid: Quick Actions & Live Recent Orders */}
+      <div className="farmer-dashboard-main-grid">
+        {/* Quick Management Shortcuts */}
+        <div
+          style={{
+            backgroundColor: '#ffffff',
+            borderRadius: '12px',
+            border: '1px solid #e2e8f0',
+            padding: '1.5rem',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+            minWidth: 0,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
+            <h2 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>Quick Management</h2>
+            <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Direct Actions</span>
+          </div>
+
+          <div className="farmer-quick-actions-grid">
+            <Link
+              href="/farmer/add-produce"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem',
+                padding: '1rem',
+                backgroundColor: '#f0fdf4',
+                border: '1px solid #bbf7d0',
+                borderRadius: '10px',
+                textDecoration: 'none',
+                color: '#166534',
+                transition: 'all 0.2s ease',
+                minWidth: 0,
+              }}
+            >
+              <span style={{ fontSize: '1.5rem', flexShrink: 0 }}>🌱</span>
+              <div style={{ minWidth: 0 }}>
+                <strong style={{ display: 'block', fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Add Produce</strong>
+                <span style={{ fontSize: '0.75rem', color: '#15803d', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>List fresh harvest</span>
+              </div>
+            </Link>
+
+            <Link
+              href="/farmer/stock"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem',
+                padding: '1rem',
+                backgroundColor: '#eff6ff',
+                border: '1px solid #bfdbfe',
+                borderRadius: '10px',
+                textDecoration: 'none',
+                color: '#1e40af',
+                transition: 'all 0.2s ease',
+                minWidth: 0,
+              }}
+            >
+              <span style={{ fontSize: '1.5rem', flexShrink: 0 }}>📦</span>
+              <div style={{ minWidth: 0 }}>
+                <strong style={{ display: 'block', fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Manage Stock</strong>
+                <span style={{ fontSize: '0.75rem', color: '#2563eb', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Adjust quantity & price</span>
+              </div>
+            </Link>
+
+            <Link
+              href="/farmer/listings"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem',
+                padding: '1rem',
+                backgroundColor: '#faf5ff',
+                border: '1px solid #e9d5ff',
+                borderRadius: '10px',
+                textDecoration: 'none',
+                color: '#6b21a8',
+                transition: 'all 0.2s ease',
+                minWidth: 0,
+              }}
+            >
+              <span style={{ fontSize: '1.5rem', flexShrink: 0 }}>📋</span>
+              <div style={{ minWidth: 0 }}>
+                <strong style={{ display: 'block', fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>My Listings</strong>
+                <span style={{ fontSize: '0.75rem', color: '#7e22ce', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>View all produce ({produces.length})</span>
+              </div>
+            </Link>
+
+            <Link
+              href="/farmer/analytics"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem',
+                padding: '1rem',
+                backgroundColor: '#fffbeb',
+                border: '1px solid #fde68a',
+                borderRadius: '10px',
+                textDecoration: 'none',
+                color: '#92400e',
+                transition: 'all 0.2s ease',
+                minWidth: 0,
+              }}
+            >
+              <span style={{ fontSize: '1.5rem', flexShrink: 0 }}>📊</span>
+              <div style={{ minWidth: 0 }}>
+                <strong style={{ display: 'block', fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Farm Analytics</strong>
+                <span style={{ fontSize: '0.75rem', color: '#b45309', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>View revenue insights</span>
+              </div>
+            </Link>
+          </div>
+        </div>
+
+        {/* Live Recent Orders List */}
+        <div
+          style={{
+            backgroundColor: '#ffffff',
+            borderRadius: '12px',
+            border: '1px solid #e2e8f0',
+            padding: '1.5rem',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+            minWidth: 0,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
+            <h2 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>Recent Orders</h2>
+            <Link
+              href="/farmer/orders"
+              style={{ fontSize: '0.8rem', fontWeight: 600, color: '#16a34a', textDecoration: 'none', flexShrink: 0 }}
+            >
+              View All ({orders.length})
+            </Link>
+          </div>
+
+          {isLoading ? (
+            <p style={{ fontSize: '0.875rem', color: '#64748b', padding: '1rem 0' }}>Loading orders...</p>
+          ) : orders.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '2rem 1rem', color: '#64748b' }}>
+              <span style={{ fontSize: '2rem', display: 'block', marginBottom: '0.5rem' }}>🛒</span>
+              <p style={{ fontSize: '0.875rem', fontWeight: 600, color: '#334155', marginBottom: '0.25rem' }}>
+                No orders received yet
+              </p>
+              <p style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                When retail stores order your produce, their orders will appear here in real time.
+              </p>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+              {orders.slice(0, 5).map((ord: any) => {
+                const firstItem = ord.items?.[0]?.produce?.name || 'Produce Item';
+                const itemCount = ord.items?.length || 1;
+                const buyer = ord.retailer?.user?.name || ord.retailer?.storeName || 'Retailer';
+                const total = ord.totalAmount || ord.items?.reduce((sum: number, it: any) => sum + (it.priceAtOrder || it.produce?.price || 0) * (it.quantity || 1), 0) || 0;
+
+                return (
+                  <div
+                    key={ord.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '0.65rem 0',
+                      borderBottom: '1px solid #f1f5f9',
+                      gap: '0.75rem',
+                      minWidth: 0,
+                    }}
+                  >
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <p style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0f172a', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        #{ord.id.slice(0, 8).toUpperCase()}
+                      </p>
+                      <p style={{ fontSize: '0.75rem', color: '#64748b', margin: '2px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {firstItem}{itemCount > 1 ? ` +${itemCount - 1} more` : ''} • {buyer}
+                      </p>
+                    </div>
+
+                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                      <p style={{ fontSize: '0.85rem', fontWeight: 700, color: '#16a34a', margin: 0 }}>
+                        ₹{Number(total).toLocaleString('en-IN')}
+                      </p>
+                      <span
+                        style={{
+                          display: 'inline-block',
+                          fontSize: '0.65rem',
+                          fontWeight: 700,
+                          backgroundColor: ord.status === 'DELIVERED' ? '#dcfce7' : ord.status === 'CANCELLED' ? '#fee2e2' : '#fef3c7',
+                          color: ord.status === 'DELIVERED' ? '#15803d' : ord.status === 'CANCELLED' ? '#b91c1c' : '#b45309',
+                          padding: '2px 6px',
+                          borderRadius: '4px',
+                          marginTop: '2px',
+                        }}
+                      >
+                        {ord.status || 'CONFIRMED'}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/*
+        Produce Listings Section (Farmer's Harvest Grid):
+        - Fetches produce records created by the logged-in farmer.
+        - Renders live Cloudinary images from item.imageUrl with controlled dimensions (180px height, object-cover).
+        - Displays Cloudinary sync badge ("☁️ Cloudinary") when hosted on Cloudinary CDN.
+        - Catches broken image links with onError and renders fallback category emoji.
+      */}
       <div
         style={{
           backgroundColor: '#ffffff',

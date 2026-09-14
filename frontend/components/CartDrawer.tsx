@@ -1,3 +1,19 @@
+/**
+ * ============================================================================
+ * Cart Drawer & Wholesale Checkout Component (Implemented by Jovab)
+ * ============================================================================
+ * Purpose: Slide-over drawer displaying all items currently added to the wholesale cart.
+ *
+ * Flow:
+ * 1. Opens when user clicks the Cart icon in Navbar or adds an item from the catalogue.
+ * 2. Allows quantity increments/decrements with minimum order quantity boundaries.
+ * 3. Checkout handler:
+ *    - Guards against unauthenticated users (prompts redirect to /login).
+ *    - Enforces RETAILER role (farmers cannot purchase wholesale items).
+ *    - Sends POST /api/orders with array of { produceId, quantity } and address.
+ *    - On 201 Created, clears cart and triggers OrderSuccessModal.
+ */
+
 "use client";
 
 import React, { useState } from "react";

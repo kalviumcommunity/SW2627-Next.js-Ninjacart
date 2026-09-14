@@ -23,6 +23,11 @@ const VALID_STATUSES = [
 /**
  * Create a new produce listing
  * POST /api/produce
+ * Protected: Requires authentication + role 'FARMER'
+ * Flow:
+ * 1. Verifies farmer profile belongs to the authenticated user.
+ * 2. Validates numerical constraints (price >= 0, quantity >= 0, minOrderQuantity > 0).
+ * 3. Saves produce record into PostgreSQL with Cloudinary imageUrl and imagePublicId.
  */
 const createProduce = async (req, res, next) => {
   try {
@@ -242,7 +247,9 @@ const getProduces = async (req, res, next) => {
     // -------------------------
     // Status filter
     // -------------------------
-    if (status) {
+    if (status && status.trim().toUpperCase() === 'ALL') {
+      // Return produces across all statuses without filter
+    } else if (status) {
       const normalizedStatus = status.trim().toUpperCase();
 
       if (!VALID_STATUSES.includes(normalizedStatus)) {
@@ -253,7 +260,10 @@ const getProduces = async (req, res, next) => {
 
       where.status = normalizedStatus;
     } else {
-      // Default catalogue filter excludes unavailable or sold-out listings before pagination.
+      // Task #32 / BUG-003 Fix:
+      // When no explicit status param is passed (e.g. general marketplace catalogue view),
+      // default filter excludes OUT_OF_STOCK, ARCHIVED, and zero-quantity listings.
+      // This ensures buyers only see purchasing options that are currently in stock.
       where.AND = [
         {
           status: {

@@ -25,6 +25,13 @@ export default function ProductDetailPage() {
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
   const [imgError, setImgError] = useState(false);
 
+  /**
+   * Product Details & Wholesale Order Flow (Tasks #20 & #23)
+   * Frontend -> API -> Backend -> PostgreSQL
+   * 1. Fetches specific produce details by ID: GET /api/produce/:id.
+   * 2. Sets default order quantity to minOrderQuantity if sufficient stock exists.
+   * 3. Blocks ordering if the produce is marked ARCHIVED or OUT_OF_STOCK.
+   */
   useEffect(() => {
     async function loadItem() {
       if (!productId) return;

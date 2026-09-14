@@ -16,6 +16,13 @@ async function seed() {
     // ==========================================
     const farmersData = [
       {
+        name: 'Jovab Sabu',
+        email: 'jovabsabu@gmail.com',
+        phone: '+91 98470 12345',
+        location: 'Kottayam, Kerala',
+        bio: 'Specializing in organic highland spices, tropical fruits, and fresh farm-to-table vegetables with 10+ years experience.',
+      },
+      {
         name: 'Ramesh Patel',
         email: 'ramesh.farmer@ninjacart.com',
         phone: '+91 98765 43210',
@@ -75,6 +82,13 @@ async function seed() {
     // 2. Seed Sample Retailers
     // ==========================================
     const retailersData = [
+      {
+        name: 'Jovab Sabu (Retailer)',
+        email: 'jovab.sabu.s.130@kalvium.community',
+        storeName: 'Jovab FreshMart Supermarket & Hub',
+        phone: '+91 98470 98765',
+        location: 'MG Road, Kochi, Kerala',
+      },
       {
         name: 'Amrutha Suresh',
         email: 'retailer@ninjacart.com',
