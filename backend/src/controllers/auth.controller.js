@@ -12,7 +12,7 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
  */
 const register = async (req, res, next) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, email, password, role, otp } = req.body;
 
     // 1. Validation
     if (!name || typeof name !== 'string' || !name.trim()) {
@@ -58,11 +58,26 @@ const register = async (req, res, next) => {
       return next(error);
     }
 
-    // 3. Hash password
+    // 3. Verify OTP
+    if (!otp || typeof otp !== 'string' || otp.trim().length !== 6) {
+      const error = new Error('A valid 6-digit OTP is required for registration');
+      error.statusCode = 400;
+      return next(error);
+    }
+
+    try {
+      otpService.verifyOtp(normalizedEmail, otp.trim());
+    } catch (verifyError) {
+      const error = new Error(verifyError.message || 'Invalid or expired OTP');
+      error.statusCode = 400;
+      return next(error);
+    }
+
+    // 4. Hash password
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-    // 4. Create User and linked profile in single transaction
+    // 5. Create User and linked profile in single transaction
     const newUser = await prisma.user.create({
       data: {
         name: name.trim(),
@@ -224,34 +239,6 @@ const sendRegistrationOtp = async (req, res, next) => {
   }
 };
 
-/**
- * Verify OTP
- * POST /api/auth/verify-otp
- */
-const verifyRegistrationOtp = async (req, res, next) => {
-  try {
-    const { email, otp } = req.body;
-    if (!email || !otp) {
-      const error = new Error('Email and OTP are required');
-      error.statusCode = 400;
-      return next(error);
-    }
-
-    const normalizedEmail = email.toLowerCase().trim();
-
-    try {
-      otpService.verifyOtp(normalizedEmail, otp);
-
-      return res.status(200).json({
-        success: true,
-        message: 'OTP verified successfully',
-      });
-    } catch (verifyError) {
-      const error = new Error(verifyError.message);
-      error.statusCode = 400;
-      return next(error);
-    }
-  } catch (error) {
     return next(error);
   }
 };
@@ -261,5 +248,4 @@ module.exports = {
   login,
   getMe,
   sendRegistrationOtp,
-  verifyRegistrationOtp,
 };

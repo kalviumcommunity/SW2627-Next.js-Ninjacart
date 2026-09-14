@@ -1,6 +1,8 @@
 const nodemailer = require('nodemailer');
 
-// In-memory store for OTPs. In production, use Redis or DB.
+// In-memory store for OTPs. 
+// NOTE: For a multi-instance production environment, replace this Map with Redis 
+// or a database to prevent OTP loss on server restarts.
 // Format: Map<email, { otp: string, expiresAt: number, lastSentAt: number }>
 const otpStore = new Map();
 
@@ -77,9 +79,14 @@ const sendOtp = async (email) => {
     return true;
   } catch (error) {
     console.error('Error sending OTP email:', error);
-    // Even if email fails (e.g. in dev), we log it so we can test without real SMTP
+    
+    // If we are in production, fail properly if SMTP fails
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('Failed to send verification email. Please contact support.');
+    }
+
+    // In dev mode, log it so we can test without real SMTP
     console.log(`[DEV MODE] OTP for ${normalizedEmail} is ${otp}`);
-    // Instead of throwing an error which blocks the UI, we just return true.
     return true;
   }
 };
