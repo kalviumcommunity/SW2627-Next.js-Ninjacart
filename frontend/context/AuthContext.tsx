@@ -1,12 +1,29 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { getMe } from "@/lib/api";
+
+export interface FarmerProfile {
+  id: string;
+  phone?: string | null;
+  location?: string | null;
+  bio?: string | null;
+}
+
+export interface RetailerProfile {
+  id: string;
+  storeName?: string | null;
+  phone?: string | null;
+  location?: string | null;
+}
 
 export interface AuthUser {
   id: string;
   name: string;
   email: string;
   role?: string;
+  farmer?: FarmerProfile | null;
+  retailer?: RetailerProfile | null;
 }
 
 export interface AuthContextType {
@@ -17,6 +34,7 @@ export interface AuthContextType {
   isLoading: boolean;
   login: (token: string, user: AuthUser, role?: string) => void;
   logout: () => void;
+  refreshUser: () => Promise<AuthUser | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -29,7 +47,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [role, setRole] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const loadAuthFromStorage = useCallback(() => {
+  const loadAuthFromStorage = useCallback(async () => {
     try {
       if (typeof window === "undefined") return;
 
@@ -56,6 +74,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser({ id: "user", name: "User", email: "", role: effectiveRole || undefined });
         }
         setRole(effectiveRole);
+
+        // Synchronize in background with live server profile
+        try {
+          const liveUser = await getMe();
+          if (liveUser) {
+            const mergedUser: AuthUser = {
+              id: liveUser.id,
+              name: liveUser.name,
+              email: liveUser.email,
+              role: liveUser.role || effectiveRole,
+              farmer: liveUser.farmer,
+              retailer: liveUser.retailer,
+            };
+            setUser(mergedUser);
+            setRole(mergedUser.role || effectiveRole);
+            localStorage.setItem("user", JSON.stringify(mergedUser));
+            if (mergedUser.role) localStorage.setItem("role", mergedUser.role);
+          }
+        } catch {
+          // Keep cached session if offline
+        }
       } else {
         setToken(null);
         setUser(null);
@@ -91,6 +130,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       window.removeEventListener(AUTH_EVENT_NAME, handleCustomAuth);
     };
   }, [loadAuthFromStorage]);
+
+  const refreshUser = async (): Promise<AuthUser | null> => {
+    try {
+      const liveUser = await getMe();
+      if (liveUser) {
+        const mergedUser: AuthUser = {
+          id: liveUser.id,
+          name: liveUser.name,
+          email: liveUser.email,
+          role: liveUser.role || role || undefined,
+          farmer: liveUser.farmer,
+          retailer: liveUser.retailer,
+        };
+        setUser(mergedUser);
+        if (mergedUser.role) {
+          setRole(mergedUser.role);
+          localStorage.setItem("role", mergedUser.role);
+        }
+        localStorage.setItem("user", JSON.stringify(mergedUser));
+        window.dispatchEvent(new Event(AUTH_EVENT_NAME));
+        return mergedUser;
+      }
+    } catch (err) {
+      console.error("Failed to refresh user profile:", err);
+    }
+    return user;
+  };
 
   const login = (newToken: string, newUser: AuthUser, explicitRole?: string) => {
     try {
@@ -131,10 +197,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user,
     token,
     role,
-    isAuthenticated: !!token && !!user,
+    isAuthenticated: Boolean(token && user),
     isLoading,
     login,
     logout,
+    refreshUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

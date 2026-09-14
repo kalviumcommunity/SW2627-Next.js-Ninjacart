@@ -102,7 +102,7 @@ export default function AddProducePage() {
 
       // Send product to backend
       const result = await createProduct(product);
-      setSuccess(`"${result?.name || name.trim()}" has been listed on the wholesale catalogue successfully.`);
+      setSuccess(`"${result?.name || name.trim()}" has been listed successfully! Redirecting to orders...`);
 
       // Clear form after successful submission
       setName("");
@@ -113,6 +113,11 @@ export default function AddProducePage() {
       setQuantity("");
       setMinOrderQuantity("1");
       setImage(null);
+
+      // Redirect to the order listing page
+      setTimeout(() => {
+        router.push("/farmer/listings");
+      }, 1000);
     } catch (submissionError) {
       setError(
         submissionError instanceof Error
@@ -440,7 +445,7 @@ export default function AddProducePage() {
           </div>
 
           {/* Category & Unit in Row */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+          <div className="form-row-2">
             <div>
               <label htmlFor="category" style={{ display: "block", fontSize: "0.875rem", fontWeight: 700, color: "#334155", marginBottom: "0.5rem" }}>
                 Category *
@@ -493,7 +498,7 @@ export default function AddProducePage() {
           </div>
 
           {/* Price, Quantity, Min Order in Row */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1rem" }}>
+          <div className="form-row-3">
             <div>
               <label htmlFor="price" style={{ display: "block", fontSize: "0.875rem", fontWeight: 700, color: "#334155", marginBottom: "0.5rem" }}>
                 Price per Unit (₹) *

@@ -368,6 +368,36 @@ export default function OrdersPage() {
                         ₹{order.totalAmount.toFixed(2)}
                       </strong>
                     </div>
+
+                    {(order.status === "PENDING" || order.status === "CONFIRMED") && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (!confirm("Are you sure you want to cancel this order?")) return;
+                          try {
+                            const { updateOrderStatus } = await import("@/lib/api");
+                            await updateOrderStatus(order.id, "CANCELLED");
+                            setOrders((prev) =>
+                              prev.map((o) => (o.id === order.id ? { ...o, status: "CANCELLED" } : o))
+                            );
+                          } catch (err: any) {
+                            alert(err?.message || "Failed to cancel order");
+                          }
+                        }}
+                        style={{
+                          padding: "0.35rem 0.75rem",
+                          backgroundColor: "#fef2f2",
+                          border: "1px solid #fecaca",
+                          color: "#dc2626",
+                          borderRadius: "6px",
+                          fontSize: "0.75rem",
+                          fontWeight: 700,
+                          cursor: "pointer",
+                        }}
+                      >
+                        Cancel Order
+                      </button>
+                    )}
                   </div>
                 </div>
 

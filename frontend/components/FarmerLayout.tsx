@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
@@ -13,8 +13,14 @@ export default function FarmerLayout({ children }: FarmerLayoutProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuth();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const farmName = user?.name ? `${user.name}'s Farm` : 'Green Valley Farms';
+  // Close mobile sidebar on route change
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [pathname]);
+
+  const farmName = user?.name ? `${user.name}'s Farm` : 'My Farm';
 
   const navItems = [
     {
@@ -43,7 +49,7 @@ export default function FarmerLayout({ children }: FarmerLayoutProps) {
       ),
     },
     {
-      label: 'Add Product',
+      label: 'Add Produce',
       href: '/farmer/add-produce',
       icon: (
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -65,7 +71,7 @@ export default function FarmerLayout({ children }: FarmerLayoutProps) {
       ),
     },
     {
-      label: 'Orders',
+      label: 'Retail Orders',
       href: '/farmer/orders',
       icon: (
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -76,7 +82,7 @@ export default function FarmerLayout({ children }: FarmerLayoutProps) {
       ),
     },
     {
-      label: 'Analytics',
+      label: 'Farm Analytics',
       href: '/farmer/analytics',
       icon: (
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -87,7 +93,7 @@ export default function FarmerLayout({ children }: FarmerLayoutProps) {
       ),
     },
     {
-      label: 'Profile',
+      label: 'Farm Profile',
       href: '/farmer/profile',
       icon: (
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -99,39 +105,103 @@ export default function FarmerLayout({ children }: FarmerLayoutProps) {
   ];
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#f8fafc' }}>
-      {/* Sidebar */}
-      <aside
+    <div className="farmer-app-container" style={{ display: 'flex', minHeight: 'calc(100vh - 58px)', backgroundColor: '#f8fafc', width: '100%', boxSizing: 'border-box' }}>
+      {/* Mobile Sub-Header for Farmer actions */}
+      <div
+        className="farmer-mobile-header"
         style={{
-          width: '240px',
+          display: 'none',
+          width: '100%',
           backgroundColor: '#ffffff',
-          borderRight: '1px solid #e2e8f0',
-          display: 'flex',
-          flexDirection: 'column',
-          position: 'fixed',
-          top: 0,
-          bottom: 0,
-          left: 0,
-          zIndex: 40,
+          borderBottom: '1px solid #e2e8f0',
+          padding: '0.6rem 1rem',
+          alignItems: 'center',
+          justifyContent: 'space-between',
         }}
       >
-        {/* Brand Header with Ninjacart Logo */}
+        <button
+          type="button"
+          onClick={() => setSidebarOpen(true)}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.4rem',
+            padding: '0.4rem 0.75rem',
+            backgroundColor: '#f1f5f9',
+            border: '1px solid #cbd5e1',
+            borderRadius: '6px',
+            fontSize: '0.85rem',
+            fontWeight: 600,
+            color: '#334155',
+            cursor: 'pointer',
+          }}
+        >
+          <span>🚜</span>
+          <span>Farmer Menu</span>
+        </button>
+
+        <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '160px' }}>
+          {farmName}
+        </span>
+
+        <Link
+          href="/farmer/add-produce"
+          style={{
+            padding: '0.4rem 0.75rem',
+            backgroundColor: '#10b981',
+            color: '#ffffff',
+            borderRadius: '6px',
+            fontSize: '0.8rem',
+            fontWeight: 700,
+            textDecoration: 'none',
+          }}
+        >
+          + Produce
+        </Link>
+      </div>
+
+      {/* Backdrop for mobile drawer */}
+      {sidebarOpen && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.5)',
+            zIndex: 90,
+          }}
+        />
+      )}
+
+      {/* Sidebar Navigation */}
+      <aside
+        className={`farmer-sidebar ${sidebarOpen ? 'open' : ''}`}
+      >
+        {/* Mobile Close Button in Drawer Header */}
+        <div className="farmer-sidebar-mobile-close" style={{ display: 'none', padding: '1rem', borderBottom: '1px solid #f1f5f9', justifyContent: 'space-between', alignItems: 'center' }}>
+          <strong style={{ fontSize: '1rem', color: '#0f172a' }}>🚜 Farmer Portal</strong>
+          <button
+            type="button"
+            onClick={() => setSidebarOpen(false)}
+            style={{ background: 'none', border: 'none', fontSize: '1.25rem', color: '#64748b', cursor: 'pointer' }}
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Sidebar Header Info */}
         <div style={{ padding: '1.25rem 1.25rem 1rem', borderBottom: '1px solid #f1f5f9' }}>
-          <Link href="/farmer/dashboard" style={{ display: 'block', textDecoration: 'none', marginBottom: '0.65rem' }}>
-            <img
-              src="/ninjacart_logo.png"
-              alt="Ninjacart"
-              style={{ height: '34px', width: 'auto', objectFit: 'contain' }}
-            />
-          </Link>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#64748b', fontSize: '0.8rem', fontWeight: 500 }}>
-            <span>🌱</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#15803d', fontSize: '0.85rem', fontWeight: 700 }}>
+            <span style={{ fontSize: '1.1rem' }}>🌱</span>
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{farmName}</span>
           </div>
+          <span style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.2rem', display: 'block' }}>
+            Direct Wholesale Portal
+          </span>
         </div>
 
         {/* Navigation Items */}
-        <nav style={{ padding: '1rem 0.75rem', flex: 1, display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+        <nav style={{ padding: '1rem 0.75rem', flex: 1, display: 'flex', flexDirection: 'column', gap: '0.35rem', overflowY: 'auto' }}>
           {navItems.map((item) => {
             const isActive = pathname === item.href || (item.href === '/farmer/dashboard' && pathname === '/farmer');
             return (
@@ -145,7 +215,7 @@ export default function FarmerLayout({ children }: FarmerLayoutProps) {
                   padding: '0.65rem 0.85rem',
                   borderRadius: '8px',
                   fontSize: '0.9rem',
-                  fontWeight: isActive ? 600 : 500,
+                  fontWeight: isActive ? 700 : 500,
                   color: isActive ? '#ffffff' : '#475569',
                   backgroundColor: isActive ? '#16a34a' : 'transparent',
                   transition: 'all 0.15s ease',
@@ -170,7 +240,7 @@ export default function FarmerLayout({ children }: FarmerLayoutProps) {
             backgroundColor: '#ffffff',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', overflow: 'hidden' }}>
             <div
               style={{
                 width: '34px',
@@ -183,15 +253,16 @@ export default function FarmerLayout({ children }: FarmerLayoutProps) {
                 justifyContent: 'center',
                 fontWeight: 700,
                 fontSize: '0.85rem',
+                flexShrink: 0,
               }}
             >
               {user?.name ? user.name.charAt(0).toUpperCase() : 'F'}
             </div>
-            <div>
-              <p style={{ fontSize: '0.85rem', fontWeight: 600, color: '#0f172a', lineHeight: 1.2 }}>
+            <div style={{ overflow: 'hidden' }}>
+              <p style={{ fontSize: '0.85rem', fontWeight: 600, color: '#0f172a', lineHeight: 1.2, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {user?.name || 'Farmer'}
               </p>
-              <p style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Verified Producer</p>
+              <p style={{ fontSize: '0.75rem', color: '#94a3b8', margin: 0 }}>Verified Producer</p>
             </div>
           </div>
           <button
@@ -203,7 +274,7 @@ export default function FarmerLayout({ children }: FarmerLayoutProps) {
             style={{
               background: 'none',
               border: 'none',
-              color: '#94a3b8',
+              color: '#ef4444',
               cursor: 'pointer',
               padding: '0.35rem',
               borderRadius: '6px',
@@ -221,8 +292,8 @@ export default function FarmerLayout({ children }: FarmerLayoutProps) {
       </aside>
 
       {/* Main Content Area */}
-      <main style={{ marginLeft: '240px', flex: 1, minHeight: '100vh', padding: '2rem' }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>{children}</div>
+      <main className="farmer-main-content">
+        <div style={{ width: '100%', maxWidth: '1200px', margin: '0 auto', boxSizing: 'border-box' }}>{children}</div>
       </main>
     </div>
   );
