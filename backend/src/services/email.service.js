@@ -1,7 +1,22 @@
+/**
+ * ============================================================================
+ * Email Service (Implemented by Jovab)
+ * ============================================================================
+ * Purpose: Delivers branded transactional emails (like 2FA OTP codes) to users.
+ *
+ * Flow:
+ * 1. Configures a Nodemailer SMTP transporter using environment variables (SMTP_USER, SMTP_PASS).
+ * 2. Compiles a responsive HTML email with the 6-digit OTP and 10-minute expiry warning.
+ * 3. Graceful Fallback: If SMTP credentials are not set up or fail during development,
+ *    it prints the OTP clearly to the backend console so developers and examiners
+ *    can test the 2FA flow without needing real email credentials.
+ */
+
 const nodemailer = require('nodemailer');
 
 let transporter = null;
 
+// Lazily initializes the Nodemailer SMTP transporter
 function getTransporter() {
   if (transporter) return transporter;
 

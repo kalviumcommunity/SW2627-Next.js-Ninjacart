@@ -1,12 +1,25 @@
+/**
+ * ============================================================================
+ * Order Controller (Implemented by Jovab)
+ * ============================================================================
+ * Purpose: Manages wholesale order lifecycle, atomic placement, and role-based order queries.
+ *
+ * Flow:
+ * 1. Retailer creates order via POST /api/orders with item IDs and quantities.
+ * 2. Controller delegates validation and atomic inventory deduction to inventoryService.
+ * 3. GET /api/orders provides role-aware filtering:
+ *    - RETAILER sees their purchase history.
+ *    - FARMER sees incoming retail orders for their produce listings.
+ *    - ADMIN sees system-wide transactions.
+ */
+
 const inventoryService = require('../services/inventory.service');
 const prisma = require('../config/db');
 
-/**
- * Controller to handle Order operations
- */
 class OrderController {
   /**
    * Create an order with atomic stock validation and deduction
+   * Flow: Authenticates retailer -> Delegates to inventoryService transaction -> Returns 201 with order details.
    */
   async createOrder(req, res, next) {
     try {
@@ -54,7 +67,10 @@ class OrderController {
   }
 
   /**
-   * Get list of orders for the authenticated retailer or all orders if authorized
+   * Get list of orders with role-based filtering:
+   * - RETAILER: Filtered by retailerId matching logged-in retailer profile.
+   * - FARMER: Filtered by order items containing produces owned by this farmer.
+   * - ADMIN: Unfiltered (full system visibility).
    */
   async getOrders(req, res, next) {
     try {

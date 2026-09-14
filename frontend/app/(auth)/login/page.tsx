@@ -23,7 +23,14 @@ export default function LoginPage() {
   const [message, setMessage] = useState<{ text: string; type: 'error' | 'success' } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Submit Credentials for direct login
+  /**
+   * Form submission handler for direct password login
+   * Flow:
+   * 1. Validates non-empty email and password inputs.
+   * 2. Calls loginUser({ email, password }) -> POST /api/auth/login.
+   * 3. Stores JWT token in localStorage and AuthContext.
+   * 4. Role-based redirect: FARMER -> /farmer/dashboard, RETAILER -> /catalogue.
+   */
   async function handleLoginSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage(null);

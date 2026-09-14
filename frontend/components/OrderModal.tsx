@@ -46,6 +46,16 @@ export default function OrderModal({ product, quantity: initialQuantity = 1, isO
   const totalPrice = (currentProduct.price * quantity).toFixed(2);
   const updateQuantity = (value: number) => setQuantity(Math.min(maxQty, Math.max(0, value)));
 
+  /**
+   * Wholesale Order Placement Handler (Task #23)
+   * Frontend -> API -> Backend -> PostgreSQL (Prisma interactive transaction)
+   * 1. Blocks farmers from placing wholesale buyer orders.
+   * 2. Validates order quantity bounds (minOrderQuantity <= qty <= stock).
+   * 3. Requires delivery address.
+   * 4. Calls createOrder() -> POST /api/orders with Bearer JWT token.
+   * 5. Backend deducts stock atomically and creates Order + OrderItem records.
+   * 6. Shows success confirmation with order details upon resolution.
+   */
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (isFarmer) {

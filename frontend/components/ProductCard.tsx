@@ -1,3 +1,18 @@
+/**
+ * ============================================================================
+ * Catalogue Product Card Component (Implemented by Jovab)
+ * ============================================================================
+ * Purpose: Renders individual produce cards in the wholesale catalogue grid.
+ *
+ * Viva points to remember:
+ * 1. Stock Status Evaluation: Checks both produce.status ('AVAILABLE' | 'LOW_STOCK')
+ *    and quantity > 0 to determine if buyers can place wholesale orders.
+ * 2. Low Stock Warning: Automatically flags produce with quantity <= 5kg as 'Low Stock'.
+ * 3. Sold Out Guard: When stock is 0, renders a translucent gray overlay and disables
+ *    the order button to prevent invalid checkout attempts.
+ * 4. Image Fallback: Gracefully handles image load errors with a curated fallback.
+ */
+
 "use client";
 
 import React, { useState } from "react";

@@ -45,6 +45,14 @@ export default function RegisterPage() {
 
     setIsSubmitting(true);
     try {
+      /**
+       * Submit direct registration to backend
+       * Frontend -> API -> Backend -> PostgreSQL (Prisma)
+       * 1. Collects name, email, password, role ('FARMER' | 'RETAILER').
+       * 2. Calls registerUser() -> POST /api/auth/register.
+       * 3. Backend creates User record and corresponding Farmer / Retailer profile record.
+       * 4. Auto-authenticates with returned JWT and redirects based on role.
+       */
       const res = await registerUser({
         name: trimmedName,
         email: trimmedEmail,

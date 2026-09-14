@@ -1,13 +1,32 @@
+/**
+ * ============================================================================
+ * 2FA OTP Service (Implemented by Jovab)
+ * ============================================================================
+ * Purpose: Provides two-factor authentication (2FA) verification for sensitive
+ * user flows like Login and Registration.
+ *
+ * Flow:
+ * 1. User submits email during login/registration.
+ * 2. Backend generates a secure 6-digit OTP code using Node.js crypto.
+ * 3. Enforces a 45-second resend cooldown to prevent spam.
+ * 4. Saves the OTP with a 10-minute expiry into PostgreSQL via Prisma.
+ * 5. Calls email.service.js to send the code to the user's inbox.
+ * 6. When the user submits the code, verifyOtpCode() validates it with a
+ *    5-attempt safety limit and invalidates the code immediately after success.
+ */
+
 const crypto = require('crypto');
 const prisma = require('../config/db');
 const { sendOtpEmail } = require('./email.service');
 
+// Security parameters: 10 min expiry, 45s resend cooldown, max 5 attempts before code revocation
 const OTP_EXPIRY_MINUTES = 10;
 const RESEND_COOLDOWN_SECONDS = 45;
 const MAX_VERIFICATION_ATTEMPTS = 5;
 
 /**
- * Generate a cryptographically secure 6-digit numeric OTP
+ * Generate a cryptographically secure 6-digit numeric OTP.
+ * Uses crypto.randomInt (not Math.random) for high entropy and unpredictable codes.
  */
 function generate6DigitCode() {
   return crypto.randomInt(100000, 1000000).toString();
@@ -86,6 +105,12 @@ async function createAndSendOtp(email, purpose, name = 'User') {
 
 /**
  * Verify a submitted OTP code
+ *
+ * Viva points to remember:
+ * 1. Checks that the code exists and has not passed its 10-minute expiry window.
+ * 2. Enforces brute-force protection by capping failed guesses at 5 attempts.
+ * 3. On successful match, deletes the record from the database to guarantee single-use.
+ *
  * @param {string} email - Normalized email address
  * @param {string} code - Submitted 6-digit OTP
  * @param {string} purpose - 'REGISTRATION' | 'LOGIN'

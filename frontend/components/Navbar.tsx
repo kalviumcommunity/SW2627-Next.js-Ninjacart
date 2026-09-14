@@ -1,3 +1,17 @@
+/**
+ * ============================================================================
+ * Dynamic Role-Aware Navbar (Implemented by Jovab)
+ * ============================================================================
+ * Purpose: Top-level navigation bar adapting links and actions based on user session and role.
+ *
+ * Flow:
+ * 1. Reads auth status and role (FARMER vs RETAILER) from AuthContext.
+ * 2. If FARMER: Renders Farmer Portal links (Dashboard, Listings, Orders).
+ * 3. If RETAILER: Renders Catalogue, Buyer Orders, and Cart button with live item count badge.
+ * 4. If Unauthenticated: Shows Login and Register buttons.
+ * 5. Supports mobile navigation menu with automatic route-change closing.
+ */
+
 "use client";
 
 import { useState, useEffect } from "react";

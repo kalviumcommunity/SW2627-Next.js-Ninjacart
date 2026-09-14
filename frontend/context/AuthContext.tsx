@@ -1,3 +1,16 @@
+/**
+ * ============================================================================
+ * Global Authentication Context (Implemented by Jovab)
+ * ============================================================================
+ * Purpose: Manages user login state, JWT session persistence, and role-based permissions.
+ *
+ * Flow:
+ * 1. Client loads: Checks localStorage for cached JWT token and profile data.
+ * 2. Background Revalidation: Calls getMe() (GET /api/auth/me) to sync fresh user data from database.
+ * 3. Cross-Tab Sync: Dispatches and listens for 'ninjakart-auth-state-changed' events to keep tabs aligned.
+ * 4. Provides global auth helpers (login, logout, refreshUser) and reactive role state (FARMER / RETAILER).
+ */
+
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";

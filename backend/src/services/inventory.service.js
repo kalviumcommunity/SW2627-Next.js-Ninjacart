@@ -1,13 +1,27 @@
+/**
+ * ============================================================================
+ * Inventory & Atomic Transaction Service (Implemented by Jovab)
+ * ============================================================================
+ * Purpose: Handles atomic order placement and prevents race conditions / overselling.
+ *
+ * Viva points to remember:
+ * 1. Problem: If two retailers order the last 10kg simultaneously, without locking,
+ *    both read stock = 10, both succeed, and inventory drops to -10 (Overselling!).
+ * 2. Solution: Uses PostgreSQL row-level locks (SELECT ... FOR UPDATE) inside
+ *    prisma.$transaction. The second request must wait until the first completes.
+ * 3. Atomic Updates: Stock decrement and Order record creation happen in a single
+ *    atomic database transaction. If anything fails, the entire transaction rolls back.
+ * 4. Auto Status Update: If remaining stock reaches 0, status transitions to 'OUT_OF_STOCK';
+ *    if <= 5kg, transitions to 'LOW_STOCK'.
+ */
+
 const prisma = require('../config/db');
 
-/**
- * Service to handle inventory operations and atomic order creation
- */
 class InventoryService {
   /**
    * Process and place an order atomically with inventory deduction
    * Uses PostgreSQL row-level locks (FOR UPDATE) inside a transaction to prevent race conditions.
-   * 
+   *
    * @param {Object} params
    * @param {string} params.retailerId - Retailer ID placing the order
    * @param {Array<{produceId: string, quantity: number}>} params.items - Array of items to order
@@ -35,7 +49,9 @@ class InventoryService {
           throw error;
         }
 
-        // Lock the produce row with FOR UPDATE to prevent race conditions
+        // Concurrency Guard: Lock the target produce row using PostgreSQL 'FOR UPDATE'.
+        // Any concurrent transaction attempting to read/order this produce will pause
+        // until this transaction commits or aborts, eliminating race conditions.
         const [produce] = await tx.$queryRaw`
           SELECT id, name, price, quantity, "minOrderQuantity", status, "farmerId"
           FROM produces
@@ -68,6 +84,7 @@ class InventoryService {
           throw error;
         }
 
+        // Compute updated stock and dynamically adjust listing availability status
         const remainingQuantity = produce.quantity - quantity;
         const newStatus = remainingQuantity === 0 
           ? 'OUT_OF_STOCK' 
@@ -75,7 +92,7 @@ class InventoryService {
             ? 'LOW_STOCK' 
             : produce.status;
 
-        // Deduct inventory atomically
+        // Deduct inventory atomically inside the active transaction
         await tx.produce.update({
           where: { id: produceId },
           data: {

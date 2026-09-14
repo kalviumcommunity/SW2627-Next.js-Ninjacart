@@ -1,3 +1,17 @@
+/**
+ * ============================================================================
+ * Farmer Portal Sidebar Layout (Implemented by Jovab)
+ * ============================================================================
+ * Purpose: Provides a cohesive dashboard shell and sidebar navigation for all
+ * farmer subpages (Dashboard, Listings, Add Produce, Stock, Orders, Analytics, Profile).
+ *
+ * Flow:
+ * 1. Wraps farmer page content with persistent left sidebar navigation.
+ * 2. Highlights currently active section using usePathname().
+ * 3. Shows personalized farm greeting and quick logout action.
+ * 4. Responsive: Collapses into a toggleable slide-out drawer on mobile devices.
+ */
+
 'use client';
 
 import React, { useState, useEffect } from 'react';

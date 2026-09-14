@@ -1,3 +1,17 @@
+/**
+ * ============================================================================
+ * Retailer Order History & Tracking (Implemented by Jovab)
+ * ============================================================================
+ * Purpose: Allows wholesale buyers (Retailers) to review past purchases and track order status.
+ *
+ * Flow:
+ * 1. Validates that current user is authenticated as a Retailer (guards against farmers/guests).
+ * 2. Calls getOrders() API -> sends GET /api/orders with JWT Bearer token.
+ * 3. Backend filters orders matching the retailer profile and includes nested items & produce images.
+ * 4. Renders order cards displaying order ID, status badges (PENDING, CONFIRMED, DELIVERED),
+ *    itemized breakdown, and total order amounts.
+ */
+
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -38,6 +52,7 @@ export default function OrdersPage() {
   const [isLoadingOrders, setIsLoadingOrders] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Fetch orders placed by this authenticated retailer from backend
   useEffect(() => {
     async function loadOrdersData() {
       if (!isAuthenticated || isFarmer) {

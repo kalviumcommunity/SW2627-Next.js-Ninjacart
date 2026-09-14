@@ -39,6 +39,14 @@ export default function RetailerCataloguePage() {
   const [selectedProduce, setSelectedProduce] = useState<Produce | null>(null);
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
 
+  /**
+   * Loads marketplace catalogue for wholesale retailers (Task #27 & Task #32)
+   * Frontend -> API -> Backend -> PostgreSQL (Prisma)
+   * 1. Passes pagination (page, limit=8), category, status, search, and sorting params.
+   * 2. Backend default filter excludes sold-out (OUT_OF_STOCK / 0 qty) items.
+   * 3. Updates produce grid and pagination controls.
+   * 4. If network fails, displays a user-visible dismissable error alert banner.
+   */
   const loadProduces = async (
     page: number,
     cat: string,

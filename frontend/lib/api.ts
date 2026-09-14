@@ -119,6 +119,8 @@ interface OrderData {
   notes?: string;
 }
 
+// BUG-002 FIX: Strip trailing slashes and redundant '/api' from NEXT_PUBLIC_API_URL.
+// Prevents the application from constructing invalid double '/api/api/produce' endpoints.
 const BACKEND_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000')
   .replace(/\/+$/, '')
   .replace(/\/api$/, '');
@@ -461,6 +463,13 @@ export async function getProduceById(id: string): Promise<Produce | null> {
 
 /**
  * Create produce listing (Farmer action)
+ * Frontend -> API -> Backend -> PostgreSQL (Prisma)
+ * - Called by: handlePublish() in frontend/app/farmer/add-produce/page.tsx
+ * - Endpoint: POST /api/produce
+ * - Payload: JSON body with produce attributes + Cloudinary imageUrl & imagePublicId
+ * - Headers: Content-Type: application/json, Authorization: Bearer <jwt_token>
+ * - Backend: authenticate -> authorizeRole('FARMER') -> produce.controller.createProduce
+ * - DB: prisma.produce.create saves record and links to the authenticated farmer's ID
  */
 export async function createProduct(product: CreateProductData): Promise<any> {
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
@@ -488,6 +497,12 @@ export async function createProduct(product: CreateProductData): Promise<any> {
 
 /**
  * Image upload handler
+ * Frontend -> API -> Backend -> Cloudinary
+ * - Called by: handleFile() in frontend/components/ImageUpload.tsx
+ * - Endpoint: POST /api/upload/image
+ * - Body: multipart/form-data with field "image"
+ * - Backend: authenticate -> Multer in-memory storage (5MB max) -> uploadController.uploadImage
+ * - Cloudinary: Streams buffer to Cloudinary CDN, returns secure HTTPS URL & public ID
  */
 export async function uploadImage(file: File) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
@@ -576,7 +591,14 @@ export async function registerUser(data: RegisterData) {
 }
 
 /**
- * Create a new order (Task #20)
+ * Create a new wholesale order (Retailer action - Tasks #20 & #23)
+ * Frontend -> API -> Backend -> PostgreSQL (Prisma interactive transaction)
+ * - Called by: handleSubmit() in frontend/components/OrderModal.tsx
+ * - Endpoint: POST /api/orders
+ * - Payload: JSON body with items (produceId, quantity), deliveryAddress, notes
+ * - Headers: Content-Type: application/json, Authorization: Bearer <retailer_jwt>
+ * - Backend: authenticate -> order.controller.createOrder
+ * - DB: Validates available stock, deducts quantity atomically, and creates Order record.
  */
 export async function createOrder(orderData: OrderData) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;

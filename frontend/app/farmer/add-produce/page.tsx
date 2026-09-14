@@ -19,6 +19,14 @@ export default function AddProducePage() {
   const [quantity, setQuantity] = useState("");
   const [minOrderQuantity, setMinOrderQuantity] = useState("1");
   const [image, setImage] = useState<File | null>(null);
+
+  // Store the Cloudinary image URL returned after a successful upload.
+  // This URL is later sent along with the produce details when creating the product.
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [imagePublicId, setImagePublicId] = useState<string | null>(null);
+
+  // Tracks if Cloudinary upload is in progress; prevents publishing half-uploaded produce
+  const [isImageUploading, setIsImageUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -26,9 +34,22 @@ export default function AddProducePage() {
   const effectiveRole = role || user?.role;
   const isFarmer = effectiveRole === "FARMER";
 
+  /**
+   * Form submission handler:
+   * 1. Validates authentication and FARMER role.
+   * 2. Checks non-negative pricing, quantity, and minimum order requirements.
+   * 3. Calls createProduct() -> POST /api/produce with Bearer JWT token.
+   * 4. Backend saves produce record + Cloudinary URL in PostgreSQL database.
+   * 5. Automatically redirects farmer to /farmer/dashboard upon success.
+   */
   async function handlePublish(e: React.FormEvent) {
     e.preventDefault();
     if (isSubmitting) return;
+
+    if (isImageUploading) {
+      setError("Please wait for the image upload to Cloudinary to complete before publishing.");
+      return;
+    }
 
     if (!isAuthenticated) {
       setError("You must be logged in as a farmer to list produce.");
@@ -45,7 +66,7 @@ export default function AddProducePage() {
     const parsedQuantity = Number(quantity);
     const parsedMinOrderQuantity = Number(minOrderQuantity);
 
-    // Validation
+    // Validate required fields and positive numerical values
     if (!name.trim()) {
       setError("Produce name is required.");
       return;
@@ -72,22 +93,7 @@ export default function AddProducePage() {
     setSuccess("");
 
     try {
-      let imageUrl: string | null = null;
-      let imagePublicId: string | null = null;
-
-      // Upload image first if provided
-      if (image) {
-        try {
-          const uploadResult = await uploadImage(image);
-          imageUrl = uploadResult?.url || null;
-          imagePublicId = uploadResult?.publicId || null;
-        } catch (uploadErr) {
-          console.warn("Image upload issue:", uploadErr);
-          // Non-blocking if mock/local
-        }
-      }
-
-      // Create product object
+      // Assemble payload including the permanent Cloudinary image URL and publicId
       const product: CreateProductData = {
         name: name.trim(),
         description: description.trim() || undefined,
@@ -100,11 +106,12 @@ export default function AddProducePage() {
         imagePublicId: imagePublicId || undefined,
       };
 
-      // Send product to backend
+      // Create the produce in the backend after the image has already been uploaded.
+      // The backend saves the produce details and Cloudinary image URL in the database.
       const result = await createProduct(product);
-      setSuccess(`"${result?.name || name.trim()}" has been listed successfully! Redirecting to orders...`);
+      setSuccess(`"${result?.name || name.trim()}" has been listed successfully! Redirecting to dashboard...`);
 
-      // Clear form after successful submission
+      // Clear form inputs and reset Cloudinary image state
       setName("");
       setDescription("");
       setCategory("VEGETABLES");
@@ -113,10 +120,12 @@ export default function AddProducePage() {
       setQuantity("");
       setMinOrderQuantity("1");
       setImage(null);
+      setImageUrl(null);
+      setImagePublicId(null);
 
-      // Redirect to the order listing page
+      // Redirect to farmer dashboard to see the new listing rendered in the harvest grid
       setTimeout(() => {
-        router.push("/farmer/listings");
+        router.push("/farmer/dashboard");
       }, 1000);
     } catch (submissionError) {
       setError(
@@ -598,27 +607,63 @@ export default function AddProducePage() {
             <label style={{ display: "block", fontSize: "0.875rem", fontWeight: 700, color: "#334155", marginBottom: "0.5rem" }}>
               Produce Photo
             </label>
-            <ImageUpload onImageSelect={setImage} />
+            <ImageUpload
+              onUploadSuccess={(res) => {
+                setImageUrl(res.url);
+                setImagePublicId(res.publicId);
+                setIsImageUploading(false);
+                setError("");
+              }}
+              onImageUpload={(res) => {
+                if (res) {
+                  setImageUrl(res.url);
+                  setImagePublicId(res.publicId);
+                } else {
+                  setImageUrl(null);
+                  setImagePublicId(null);
+                }
+                setIsImageUploading(false);
+              }}
+              onImageSelect={(file) => {
+                setImage(file);
+                if (file) {
+                  setIsImageUploading(true);
+                } else {
+                  setIsImageUploading(false);
+                  setImageUrl(null);
+                  setImagePublicId(null);
+                }
+              }}
+              onUploadError={(err) => {
+                setIsImageUploading(false);
+                setError(`Image upload error: ${err}`);
+              }}
+              disabled={isSubmitting}
+            />
           </div>
 
           {/* Submit Button */}
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || isImageUploading}
             style={{
               padding: "0.95rem 1.75rem",
-              backgroundColor: isSubmitting ? "#94a3b8" : "#10b981",
+              backgroundColor: isSubmitting || isImageUploading ? "#94a3b8" : "#10b981",
               color: "#ffffff",
               borderRadius: "10px",
               fontWeight: 700,
               fontSize: "1rem",
               border: "none",
-              cursor: isSubmitting ? "not-allowed" : "pointer",
+              cursor: isSubmitting || isImageUploading ? "not-allowed" : "pointer",
               boxShadow: "0 2px 6px rgba(16, 185, 129, 0.25)",
               transition: "background-color 0.2s ease",
             }}
           >
-            {isSubmitting ? "Publishing Produce..." : "🌱 Publish Produce Listing"}
+            {isSubmitting
+              ? "Publishing Produce..."
+              : isImageUploading
+              ? "Uploading Image..."
+              : "🌱 Publish Produce Listing"}
           </button>
         </form>
       </div>
