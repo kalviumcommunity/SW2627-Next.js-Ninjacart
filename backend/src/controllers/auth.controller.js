@@ -1,12 +1,11 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const prisma = require('../config/db');
-const { createAndSendOtp, verifyOtpCode } = require('./../services/otp.service');
 
 // Regular expression for validating email format
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// Mask email for privacy in messages (e.g. jo***@domain.com)
+// Mask email for privacy in error/feedback messages (e.g. jo***@domain.com)
 const maskEmail = (rawEmail) => {
   if (!rawEmail || typeof rawEmail !== 'string' || !rawEmail.includes('@')) return rawEmail;
   const [user, domain] = rawEmail.split('@');
@@ -15,68 +14,12 @@ const maskEmail = (rawEmail) => {
 };
 
 /**
- * Send OTP to email for Registration or Login
- * POST /api/auth/send-otp
- */
-const sendOtp = async (req, res, next) => {
-  try {
-    const { email, purpose, name } = req.body;
-
-    if (!email || typeof email !== 'string' || !EMAIL_REGEX.test(email.trim())) {
-      const error = new Error('A valid email address is required');
-      error.statusCode = 400;
-      return next(error);
-    }
-
-    const normalizedEmail = email.toLowerCase().trim();
-    const normalizedPurpose = (purpose || 'REGISTRATION').toUpperCase().trim();
-
-    if (!['REGISTRATION', 'LOGIN'].includes(normalizedPurpose)) {
-      const error = new Error('Purpose must be either REGISTRATION or LOGIN');
-      error.statusCode = 400;
-      return next(error);
-    }
-
-    // Purpose checks
-    if (normalizedPurpose === 'REGISTRATION') {
-      const existingUser = await prisma.user.findUnique({
-        where: { email: normalizedEmail },
-      });
-      if (existingUser) {
-        const error = new Error(`An account with email ${maskEmail(normalizedEmail)} already exists. Please sign in instead.`);
-        error.statusCode = 409;
-        return next(error);
-      }
-    } else if (normalizedPurpose === 'LOGIN') {
-      const user = await prisma.user.findUnique({
-        where: { email: normalizedEmail },
-      });
-      if (!user) {
-        const error = new Error(`No account found with email address ${maskEmail(normalizedEmail)}.`);
-        error.statusCode = 404;
-        return next(error);
-      }
-    }
-
-    const result = await createAndSendOtp(normalizedEmail, normalizedPurpose, name);
-
-    return res.status(200).json({
-      success: true,
-      message: `Verification code sent to ${maskEmail(normalizedEmail)}`,
-      data: result,
-    });
-  } catch (error) {
-    return next(error);
-  }
-};
-
-/**
- * Register a new User with OTP verification
+ * Register a new User (Direct Registration - No OTP required)
  * POST /api/auth/register
  */
 const register = async (req, res, next) => {
   try {
-    const { name, email, password, role, otp } = req.body;
+    const { name, email, password, role } = req.body;
 
     // 1. Validation
     if (!name || typeof name !== 'string' || !name.trim()) {
@@ -117,16 +60,11 @@ const register = async (req, res, next) => {
       return next(error);
     }
 
-    // 3. Verify OTP if provided (or require OTP if configured)
-    if (otp) {
-      await verifyOtpCode(normalizedEmail, otp, 'REGISTRATION');
-    }
-
-    // 4. Hash password
+    // 3. Hash password
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-    // 5. Create User and linked profile in single transaction
+    // 4. Create User and linked profile in single transaction
     const newUser = await prisma.user.create({
       data: {
         name: name.trim(),
@@ -138,25 +76,22 @@ const register = async (req, res, next) => {
       },
     });
 
-    // 6. Generate JWT for immediate login on register
-    const jwtSecret = process.env.JWT_SECRET;
-    let token = null;
-    if (jwtSecret) {
-      token = jwt.sign(
-        {
-          id: newUser.id,
-          name: newUser.name,
-          email: newUser.email,
-          role: newUser.role,
-        },
-        jwtSecret,
-        {
-          expiresIn: process.env.JWT_EXPIRES_IN || '7d',
-        }
-      );
-    }
+    // 5. Generate JWT for immediate login on register
+    const jwtSecret = process.env.JWT_SECRET || 'dev_jwt_secret_ninjacart_fallback';
+    const token = jwt.sign(
+      {
+        id: newUser.id,
+        name: newUser.name,
+        email: newUser.email,
+        role: newUser.role,
+      },
+      jwtSecret,
+      {
+        expiresIn: process.env.JWT_EXPIRES_IN || '7d',
+      }
+    );
 
-    // 7. Return HTTP 201 with token and user profile
+    // 6. Return HTTP 201 with token and user profile
     return res.status(201).json({
       success: true,
       message: 'Account registered successfully',
@@ -180,61 +115,15 @@ const register = async (req, res, next) => {
 };
 
 /**
- * Authenticate User with Password and OTP Verification
- * - If a valid JWT token is present in Authorization header: OTP is not needed.
- * - If JWT is absent: OTP verification is required to verify identity and issue JWT.
+ * Authenticate User (Direct Login with Email and Password - No OTP required)
  * POST /api/auth/login
  */
 const login = async (req, res, next) => {
   try {
-    const authHeader = req.headers.authorization;
-    const jwtSecret = process.env.JWT_SECRET;
+    const { email, password } = req.body;
 
-    // 0. If a valid JWT is already present, user is already verified -> OTP is not needed
-    if (authHeader && authHeader.startsWith('Bearer ') && jwtSecret) {
-      const existingToken = authHeader.split(' ')[1].trim();
-      if (existingToken) {
-        try {
-          const decoded = jwt.verify(existingToken, jwtSecret);
-          const existingUser = await prisma.user.findUnique({
-            where: { id: decoded.id },
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              role: true,
-              farmer: true,
-              retailer: true,
-            },
-          });
-
-          if (existingUser) {
-            return res.status(200).json({
-              success: true,
-              otpRequired: false,
-              message: 'Authenticated via valid JWT. OTP verification not needed.',
-              data: {
-                token: existingToken,
-                role: existingUser.role,
-                user: {
-                  id: existingUser.id,
-                  name: existingUser.name,
-                  email: existingUser.email,
-                  role: existingUser.role,
-                },
-              },
-            });
-          }
-        } catch (err) {
-          // Token expired or invalid -> proceed to full login verification
-        }
-      }
-    }
-
-    const { email, password, otp } = req.body;
-
-    if (!email) {
-      const error = new Error('Email is required');
+    if (!email || !password) {
+      const error = new Error('Email and password are required');
       error.statusCode = 400;
       return next(error);
     }
@@ -253,44 +142,15 @@ const login = async (req, res, next) => {
     }
 
     // 2. Verify password with bcrypt
-    if (password) {
-      const isMatch = await bcrypt.compare(password, user.password);
-      if (!isMatch) {
-        const error = new Error('Invalid email or password');
-        error.statusCode = 401;
-        return next(error);
-      }
-    }
-
-    // 3. When JWT is absent:
-    // If OTP is provided, verify OTP code and proceed to issue token
-    if (otp) {
-      await verifyOtpCode(normalizedEmail, otp, 'LOGIN');
-    } else if (req.body.sendOtp || req.headers['x-require-otp'] === 'true') {
-      // If client requests OTP verification (2FA flow on Web UI when JWT is absent)
-      await createAndSendOtp(normalizedEmail, 'LOGIN', user.name);
-
-      return res.status(200).json({
-        success: true,
-        otpRequired: true,
-        message: `A verification code has been sent to ${maskEmail(normalizedEmail)}`,
-        data: {
-          email: normalizedEmail,
-          name: user.name,
-          role: user.role,
-        },
-      });
-    }
-
-    // 4. Ensure JWT_SECRET is configured
-    if (!jwtSecret) {
-      console.error('FATAL: JWT_SECRET environment variable is not configured.');
-      const error = new Error('JWT_SECRET is not configured on server');
-      error.statusCode = 500;
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      const error = new Error('Invalid email or password');
+      error.statusCode = 401;
       return next(error);
     }
 
-    // 5. Generate JWT
+    // 3. Generate JWT
+    const jwtSecret = process.env.JWT_SECRET || 'dev_jwt_secret_ninjacart_fallback';
     const token = jwt.sign(
       {
         id: user.id,
@@ -304,7 +164,7 @@ const login = async (req, res, next) => {
       }
     );
 
-    // 6. Return token and user data without password/hash
+    // 4. Return token and user data without password/hash
     return res.status(200).json({
       success: true,
       message: 'Login successful',
@@ -325,40 +185,25 @@ const login = async (req, res, next) => {
 };
 
 /**
- * Resend OTP with cooldown validation
+ * Send OTP (Optional Helper for password reset/verification)
+ * POST /api/auth/send-otp
+ */
+const sendOtp = async (req, res, next) => {
+  return res.status(200).json({
+    success: true,
+    message: 'OTP verification is currently disabled.',
+  });
+};
+
+/**
+ * Resend OTP (Optional Helper)
  * POST /api/auth/resend-otp
  */
 const resendOtp = async (req, res, next) => {
-  try {
-    const { email, purpose } = req.body;
-
-    if (!email || typeof email !== 'string' || !EMAIL_REGEX.test(email.trim())) {
-      const error = new Error('A valid email address is required');
-      error.statusCode = 400;
-      return next(error);
-    }
-
-    const normalizedEmail = email.toLowerCase().trim();
-    const normalizedPurpose = (purpose || 'LOGIN').toUpperCase().trim();
-
-    const user = await prisma.user.findUnique({
-      where: { email: normalizedEmail },
-    });
-
-    const result = await createAndSendOtp(
-      normalizedEmail,
-      normalizedPurpose,
-      user?.name || 'User'
-    );
-
-    return res.status(200).json({
-      success: true,
-      message: `A fresh verification code was sent to ${maskEmail(normalizedEmail)}`,
-      data: result,
-    });
-  } catch (error) {
-    return next(error);
-  }
+  return res.status(200).json({
+    success: true,
+    message: 'OTP verification is currently disabled.',
+  });
 };
 
 /**
